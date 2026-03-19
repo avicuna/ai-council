@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-council"
+version = "0.1.0"
+description = "Multi-LLM orchestrator — ask multiple AI models and synthesize their best answer"
+requires-python = ">=3.11"
+dependencies = [
+    "litellm>=1.40.0",
+    "click>=8.1.0",
+    "rich>=13.0.0",
+]
+
+[project.scripts]
+council = "ai_council.cli:cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+target-version = "py311"
