@@ -1,17 +1,14 @@
 # AI Council — Multi-LLM Orchestrator (Personal Edition)
 
-Query up to 6 AI models in parallel and synthesize their best answer. Three orchestration modes: MoA (fast), Debate (thorough), Red Team (adversarial). Built on [LiteLLM](https://github.com/BerriAI/litellm) for universal provider support.
+Query up to 6 AI models in parallel and synthesize their best answer. Three orchestration modes, three cost tiers, per-query cost tracking. Built on [LiteLLM](https://github.com/BerriAI/litellm) for universal provider support.
 
-## Models
+## Tiers
 
-| Model | Provider | Type |
-|-------|----------|------|
-| Claude Opus 4.6 | Anthropic | Standard |
-| GPT-4.1 | OpenAI | Standard |
-| o3 | OpenAI | Reasoning |
-| Gemini 2.5 Pro | Google | Standard |
-| DeepSeek R1 | DeepSeek | Reasoning |
-| Grok 3 | xAI | Standard |
+| Tier | Models | Aggregator | Use Case |
+|------|--------|------------|----------|
+| **fast** | Haiku 4.5, GPT-4o-mini, Gemini Flash | Haiku 4.5 | Quick questions, ~10x cheaper |
+| **balanced** | Sonnet 4, GPT-4.1, Gemini 2.5 Pro | Sonnet 4 | Good quality, moderate cost |
+| **full** | Opus 4.6, GPT-4.1, o3, Gemini Pro, DeepSeek R1, Grok 3 | Opus 4.6 | Maximum quality, 6 models |
 
 Only models with API keys configured are used. Works with 2+ models.
 
@@ -34,23 +31,51 @@ export XAI_API_KEY="..."           # Optional
 # MoA mode (default) — fast parallel synthesis
 council ask "What causes inflation?" --verbose
 
-# Debate mode — multi-round revision
-council ask "React vs Vue?" --mode debate --rounds 2 -v
+# Use a cheaper tier for simple questions
+council ask "What is HTTP?" --tier fast -v
 
-# Red Team mode — adversarial critique + defense
-council ask "Is this architecture scalable?" --mode redteam -v
+# Balanced tier for everyday use
+council ask "React vs Vue?" --tier balanced --mode debate -v
 
-# Preset commands
-council review src/main.py          # Code review
-council debug "TypeError: ..."      # Debug an error
-council research "WebSockets vs SSE" # Research (debate mode)
+# Full tier (default) for important questions
+council ask "Design a caching strategy" --mode redteam -v
+
+# Preset commands (all support --tier)
+council review src/main.py --tier balanced
+council debug "TypeError: ..."
+council research "WebSockets vs SSE" --tier full
 
 # Pipe stdin
 cat error.log | council debug
 cat main.py | council ask "review this" -f src/utils.py
 
-# Check status
-council models
+# Budget tracking
+council costs                       # Spending summary
+council models                      # Model status (default: full)
+council models -t fast              # Show fast tier models
+```
+
+## Cost Tracking
+
+Every query logs its cost to `~/.ai-council/costs.jsonl`. View your spending:
+
+```bash
+council costs
+# Spending Summary
+#   Today:      $0.1234  (5 queries)
+#   This week:  $0.8901
+#   This month: $2.3456
+#   All time:   $12.3456  (142 queries)
+#
+# By Tier
+#   fast: $1.2345
+#   balanced: $3.4567
+#   full: $7.5544
+```
+
+Cost is also shown in every query's footer:
+```
+Models: 6/6 | Mode: MoA | Tier: full | Time: 12.3s | Agreement: 85% | Cost: $0.0234
 ```
 
 ## MCP Server (Claude Code)
@@ -68,7 +93,9 @@ Add to your `.mcp.json`:
 }
 ```
 
-Tools: `council_ask`, `council_review`, `council_debug`, `council_research`, `council_models`
+Tools: `council_ask`, `council_review`, `council_debug`, `council_research`, `council_costs`, `council_models`
+
+All MCP tools support a `tier` parameter (`"fast"`, `"balanced"`, `"full"`).
 
 ## How It Works
 
@@ -96,16 +123,17 @@ export COUNCIL_AGGREGATOR_MODEL="claude-opus-4-20250918"
 
 ```
 src/ai_council/
-├── cli.py              CLI (ask, review, debug, research, models)
-├── config.py           6 models, env var config, reasoning model detection
-├── providers.py        LiteLLM async calls, reasoning model handling
+├── cli.py              CLI (ask, review, debug, research, models, costs)
+├── config.py           Tiered model config, env var overrides
+├── providers.py        LiteLLM async calls, cost tracking, reasoning model handling
 ├── prompts.py          MoA + Debate + Red Team + Scoring prompts
 ├── scoring.py          Agreement scoring (0-100%)
+├── cost_tracker.py     Persistent cost logging (~/.ai-council/costs.jsonl)
 ├── mcp_server.py       MCP server for Claude Code
 └── strategies/
-    ├── moa.py          Mixture of Agents + scoring
-    ├── debate.py       Multi-round debate + scoring
-    └── redteam.py      Adversarial critique/defense/judge
+    ├── moa.py          Mixture of Agents + scoring + cost
+    ├── debate.py       Multi-round debate + scoring + cost
+    └── redteam.py      Adversarial critique/defense/judge + cost
 ```
 
 All provider calls go through LiteLLM — supports 100+ models. Just set the API key and model ID.

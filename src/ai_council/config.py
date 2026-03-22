@@ -1,6 +1,7 @@
 """Configuration for AI Council — Personal Edition.
 
 Premium model lineup with direct API keys. No gateway, no restrictions.
+Supports tiered routing: fast (cheap), balanced (mid), full (premium).
 
 Required env vars (set whichever providers you want):
     export ANTHROPIC_API_KEY="sk-ant-..."
@@ -15,9 +16,10 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-# ─── Default models ──────────────────────────────────────────
+# ─── Default models per tier ─────────────────────────────────
 # Override any model via env vars: COUNCIL_CLAUDE_MODEL, etc.
 
+# Full tier (premium)
 CLAUDE_MODEL = os.environ.get("COUNCIL_CLAUDE_MODEL", "claude-opus-4-20250918")
 GPT_MODEL = os.environ.get("COUNCIL_GPT_MODEL", "gpt-4.1")
 O3_MODEL = os.environ.get("COUNCIL_O3_MODEL", "o3")
@@ -38,6 +40,42 @@ _PROVIDER_KEYS: list[tuple[tuple[str, ...], str]] = [
     (("deepseek",), "DEEPSEEK_API_KEY"),
     (("xai", "grok"), "XAI_API_KEY"),
 ]
+
+# ─── Tier definitions ────────────────────────────────────────
+# Each tier: (list of (model_id, friendly_name), aggregator_model_id)
+
+TIERS: dict[str, dict] = {
+    "fast": {
+        "models": [
+            ("claude-haiku-4-5-20251001", "Claude Haiku 4.5"),
+            ("gpt-4o-mini", "GPT-4o-mini"),
+            ("gemini/gemini-2.0-flash", "Gemini Flash"),
+        ],
+        "aggregator": "claude-haiku-4-5-20251001",
+    },
+    "balanced": {
+        "models": [
+            ("claude-sonnet-4-20250514", "Claude Sonnet 4"),
+            ("gpt-4.1", "GPT-4.1"),
+            ("gemini/gemini-2.5-pro", "Gemini 2.5 Pro"),
+        ],
+        "aggregator": "claude-sonnet-4-20250514",
+    },
+    "full": {
+        "models": [
+            (CLAUDE_MODEL, None),   # None = auto-resolve name
+            (GPT_MODEL, None),
+            (O3_MODEL, None),
+            (GEMINI_MODEL, None),
+            (DEEPSEEK_MODEL, None),
+            (GROK_MODEL, None),
+        ],
+        "aggregator": AGGREGATOR_MODEL,
+    },
+}
+
+VALID_TIERS = list(TIERS.keys())
+DEFAULT_TIER = "full"
 
 
 @dataclass
@@ -62,31 +100,40 @@ class ModelConfig:
         return True  # Unknown provider — try anyway
 
 
-def _all_proposers() -> list[ModelConfig]:
-    """Build the full list of proposer models."""
-    return [
-        ModelConfig(model=CLAUDE_MODEL, name=_friendly_name(CLAUDE_MODEL)),
-        ModelConfig(model=GPT_MODEL, name=_friendly_name(GPT_MODEL)),
-        ModelConfig(model=O3_MODEL, name=_friendly_name(O3_MODEL)),
-        ModelConfig(model=GEMINI_MODEL, name=_friendly_name(GEMINI_MODEL)),
-        ModelConfig(model=DEEPSEEK_MODEL, name=_friendly_name(DEEPSEEK_MODEL)),
-        ModelConfig(model=GROK_MODEL, name=_friendly_name(GROK_MODEL)),
-    ]
+def _resolve_tier(tier: str) -> dict:
+    """Resolve a tier name to its definition, with validation."""
+    if tier not in TIERS:
+        import warnings
+        warnings.warn(f"Unknown tier {tier!r}, falling back to {DEFAULT_TIER!r}. Valid: {VALID_TIERS}")
+        return TIERS[DEFAULT_TIER]
+    return TIERS[tier]
 
 
-def get_proposers() -> list[ModelConfig]:
-    """Return proposer models with available API keys."""
-    return [m for m in _all_proposers() if m.available]
+def _build_models(tier: str) -> list[ModelConfig]:
+    """Build the model list for a given tier."""
+    tier_def = _resolve_tier(tier)
+    models = []
+    for model_id, name in tier_def["models"]:
+        friendly = name if name else _friendly_name(model_id)
+        models.append(ModelConfig(model=model_id, name=friendly))
+    return models
 
 
-def get_all_proposers() -> list[ModelConfig]:
-    """Return ALL proposer models regardless of key availability (for display)."""
-    return _all_proposers()
+def get_proposers(tier: str = DEFAULT_TIER) -> list[ModelConfig]:
+    """Return proposer models with available API keys for the given tier."""
+    return [m for m in _build_models(tier) if m.available]
 
 
-def get_aggregator() -> ModelConfig:
-    """Return the aggregator model."""
-    return ModelConfig(model=AGGREGATOR_MODEL, name=_friendly_name(AGGREGATOR_MODEL))
+def get_all_proposers(tier: str = DEFAULT_TIER) -> list[ModelConfig]:
+    """Return ALL proposer models for display (regardless of key availability)."""
+    return _build_models(tier)
+
+
+def get_aggregator(tier: str = DEFAULT_TIER) -> ModelConfig:
+    """Return the aggregator model for the given tier."""
+    tier_def = _resolve_tier(tier)
+    agg_model = tier_def["aggregator"]
+    return ModelConfig(model=agg_model, name=_friendly_name(agg_model))
 
 
 _FRIENDLY_NAMES = {

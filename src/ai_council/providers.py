@@ -7,6 +7,8 @@ LiteLLM handles API keys automatically from environment variables:
 Reasoning models (o3, DeepSeek R1) get special handling:
     - System messages are converted to user message prefixes
     - Temperature parameter is omitted
+
+Cost tracking: every call records estimated USD cost via litellm.completion_cost().
 """
 
 from __future__ import annotations
@@ -15,7 +17,7 @@ import asyncio
 import time
 from dataclasses import dataclass
 
-from litellm import acompletion
+from litellm import acompletion, completion_cost
 
 from ai_council.config import ModelConfig, REASONING_MODELS
 
@@ -30,6 +32,7 @@ class ModelResponse:
     content: str
     latency_ms: int
     error: str | None = None
+    cost_usd: float = 0.0
 
     @property
     def succeeded(self) -> bool:
@@ -98,11 +101,20 @@ async def call_model(config: ModelConfig, messages: list[dict]) -> ModelResponse
         kwargs = _model_kwargs(config)
         response = await acompletion(model=config.model, messages=prepared, **kwargs)
         elapsed = int((time.monotonic() - start) * 1000)
+
+        # Estimate cost via LiteLLM
+        cost = 0.0
+        try:
+            cost = completion_cost(completion_response=response) or 0.0
+        except Exception:
+            pass  # Cost estimation can fail for unknown models
+
         return ModelResponse(
             model=config.model,
             name=config.name,
             content=response.choices[0].message.content or "",
             latency_ms=elapsed,
+            cost_usd=cost,
         )
     except Exception as e:
         elapsed = int((time.monotonic() - start) * 1000)

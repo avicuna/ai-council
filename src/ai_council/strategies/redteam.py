@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 
-from ai_council.config import get_aggregator, get_proposers
+from ai_council.config import DEFAULT_TIER, get_aggregator, get_proposers
 from ai_council.prompts import (
     REDTEAM_ATTACKER_SYSTEM,
     REDTEAM_ATTACKER_TEMPLATE,
@@ -27,8 +27,18 @@ class RedTeamResult:
     targeted_attack: ModelResponse
     synthesis: ModelResponse
     total_ms: int = 0
+    tier: str = DEFAULT_TIER
     agreement_score: int | None = None
     agreement_reason: str | None = None
+
+    @property
+    def total_cost_usd(self) -> float:
+        cost = sum(p.cost_usd for p in self.proposals)
+        cost += self.initial_attack.cost_usd
+        cost += sum(d.cost_usd for d in self.defenses)
+        cost += self.targeted_attack.cost_usd
+        cost += self.synthesis.cost_usd
+        return cost
 
 
 def _select_attacker(prompt: str, proposers: list) -> int:
@@ -36,16 +46,16 @@ def _select_attacker(prompt: str, proposers: list) -> int:
     return hash(prompt) % len(proposers)
 
 
-async def run_redteam(prompt: str) -> RedTeamResult:
-    all_proposers = get_proposers()
+async def run_redteam(prompt: str, tier: str = DEFAULT_TIER) -> RedTeamResult:
+    all_proposers = get_proposers(tier)
 
     if len(all_proposers) < 2:
         from ai_council.strategies.moa import run_moa
-        moa = await run_moa(prompt)
+        moa = await run_moa(prompt, tier=tier)
         return RedTeamResult(
             proposals=moa.proposals, initial_attack=moa.synthesis,
             defenses=[], targeted_attack=moa.synthesis,
-            synthesis=moa.synthesis, total_ms=moa.total_ms,
+            synthesis=moa.synthesis, total_ms=moa.total_ms, tier=tier,
         )
 
     attacker_idx = _select_attacker(prompt, all_proposers)
@@ -65,7 +75,7 @@ async def run_redteam(prompt: str) -> RedTeamResult:
         fail = ModelResponse("", "redteam", "All proposers failed.", 0, "no proposals")
         return RedTeamResult(
             proposals=proposals, initial_attack=fail,
-            defenses=[], targeted_attack=fail, synthesis=fail, total_ms=total,
+            defenses=[], targeted_attack=fail, synthesis=fail, total_ms=total, tier=tier,
         )
 
     # Round 1: Attacker critiques
@@ -120,7 +130,7 @@ async def run_redteam(prompt: str) -> RedTeamResult:
         targeted_attack=targeted_attack.content if targeted_attack.succeeded else "N/A",
     )
     synthesis = await call_model(
-        get_aggregator(),
+        get_aggregator(tier),
         [{"role": "system", "content": REDTEAM_JUDGE_SYSTEM},
          {"role": "user", "content": judge_prompt}],
     )
@@ -133,6 +143,6 @@ async def run_redteam(prompt: str) -> RedTeamResult:
     return RedTeamResult(
         proposals=proposals, initial_attack=initial_attack,
         defenses=defenses, targeted_attack=targeted_attack,
-        synthesis=synthesis, total_ms=total,
+        synthesis=synthesis, total_ms=total, tier=tier,
         agreement_score=score, agreement_reason=reason,
     )

@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 
-from ai_council.config import get_aggregator, get_proposers
+from ai_council.config import DEFAULT_TIER, get_aggregator, get_proposers
 from ai_council.prompts import (
     DEBATE_JUDGE_SYSTEM,
     DEBATE_JUDGE_TEMPLATE,
@@ -24,12 +24,20 @@ class DebateResult:
     synthesis: ModelResponse
     num_rounds: int
     total_ms: int
+    tier: str = DEFAULT_TIER
     agreement_score: int | None = None
     agreement_reason: str | None = None
 
+    @property
+    def total_cost_usd(self) -> float:
+        cost = self.synthesis.cost_usd
+        for rnd in self.rounds:
+            cost += sum(r.cost_usd for r in rnd)
+        return cost
 
-async def run_debate(prompt: str, max_rounds: int = 3) -> DebateResult:
-    proposers = get_proposers()
+
+async def run_debate(prompt: str, max_rounds: int = 3, tier: str = DEFAULT_TIER) -> DebateResult:
+    proposers = get_proposers(tier)
     rounds: list[list[ModelResponse]] = []
     total = 0
 
@@ -71,7 +79,7 @@ async def run_debate(prompt: str, max_rounds: int = 3) -> DebateResult:
         prompt=prompt, debate_history=format_debate_history(rounds)
     )
     synthesis = await call_model(
-        get_aggregator(),
+        get_aggregator(tier),
         [{"role": "system", "content": DEBATE_JUDGE_SYSTEM},
          {"role": "user", "content": judge_prompt}],
     )
@@ -83,5 +91,5 @@ async def run_debate(prompt: str, max_rounds: int = 3) -> DebateResult:
 
     return DebateResult(
         rounds=rounds, synthesis=synthesis, num_rounds=len(rounds), total_ms=total,
-        agreement_score=score, agreement_reason=reason,
+        tier=tier, agreement_score=score, agreement_reason=reason,
     )
