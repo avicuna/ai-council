@@ -9,6 +9,7 @@ Required env vars (set whichever providers you want):
     export GEMINI_API_KEY="..."
     export DEEPSEEK_API_KEY="..."      # Optional
     export XAI_API_KEY="..."           # Optional (Grok)
+    export MISTRAL_API_KEY="..."       # Optional (Mistral)
 """
 
 from __future__ import annotations
@@ -20,12 +21,13 @@ from dataclasses import dataclass
 # Override any model via env vars: COUNCIL_CLAUDE_MODEL, etc.
 
 # Full tier (premium)
-CLAUDE_MODEL = os.environ.get("COUNCIL_CLAUDE_MODEL", "claude-opus-4-20250918")
+CLAUDE_MODEL = os.environ.get("COUNCIL_CLAUDE_MODEL", "claude-opus-4-20250514")
 GPT_MODEL = os.environ.get("COUNCIL_GPT_MODEL", "gpt-4.1")
 O3_MODEL = os.environ.get("COUNCIL_O3_MODEL", "o3")
 GEMINI_MODEL = os.environ.get("COUNCIL_GEMINI_MODEL", "gemini/gemini-2.5-pro")
 DEEPSEEK_MODEL = os.environ.get("COUNCIL_DEEPSEEK_MODEL", "deepseek/deepseek-reasoner")
 GROK_MODEL = os.environ.get("COUNCIL_GROK_MODEL", "xai/grok-3")
+MISTRAL_MODEL = os.environ.get("COUNCIL_MISTRAL_MODEL", "mistral/mistral-large-latest")
 
 AGGREGATOR_MODEL = os.environ.get("COUNCIL_AGGREGATOR_MODEL", CLAUDE_MODEL)
 
@@ -39,6 +41,7 @@ _PROVIDER_KEYS: list[tuple[tuple[str, ...], str]] = [
     (("gemini",), "GEMINI_API_KEY"),
     (("deepseek",), "DEEPSEEK_API_KEY"),
     (("xai", "grok"), "XAI_API_KEY"),
+    (("mistral",), "MISTRAL_API_KEY"),
 ]
 
 # ─── Tier definitions ────────────────────────────────────────
@@ -50,6 +53,7 @@ TIERS: dict[str, dict] = {
             ("claude-haiku-4-5-20251001", "Claude Haiku 4.5"),
             ("gpt-4o-mini", "GPT-4o-mini"),
             ("gemini/gemini-2.0-flash", "Gemini Flash"),
+            ("mistral/mistral-small-latest", "Mistral Small"),
         ],
         "aggregator": "claude-haiku-4-5-20251001",
     },
@@ -58,6 +62,7 @@ TIERS: dict[str, dict] = {
             ("claude-sonnet-4-20250514", "Claude Sonnet 4"),
             ("gpt-4.1", "GPT-4.1"),
             ("gemini/gemini-2.5-pro", "Gemini 2.5 Pro"),
+            ("mistral/mistral-large-latest", "Mistral Large"),
         ],
         "aggregator": "claude-sonnet-4-20250514",
     },
@@ -69,6 +74,7 @@ TIERS: dict[str, dict] = {
             (GEMINI_MODEL, None),
             (DEEPSEEK_MODEL, None),
             (GROK_MODEL, None),
+            (MISTRAL_MODEL, None),
         ],
         "aggregator": AGGREGATOR_MODEL,
     },
@@ -137,7 +143,7 @@ def get_aggregator(tier: str = DEFAULT_TIER) -> ModelConfig:
 
 
 _FRIENDLY_NAMES = {
-    "claude-opus-4-20250918": "Claude Opus 4.6",
+    "claude-opus-4-20250514": "Claude Opus 4",
     "claude-sonnet-4-20250514": "Claude Sonnet 4",
     "claude-haiku-4-5-20251001": "Claude Haiku 4.5",
     "gpt-4.1": "GPT-4.1",
@@ -152,6 +158,8 @@ _FRIENDLY_NAMES = {
     "deepseek/deepseek-reasoner": "DeepSeek R1",
     "deepseek/deepseek-chat": "DeepSeek V3",
     "xai/grok-3": "Grok 3",
+    "mistral/mistral-large-latest": "Mistral Large",
+    "mistral/mistral-small-latest": "Mistral Small",
 }
 
 
