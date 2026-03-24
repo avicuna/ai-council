@@ -21,7 +21,7 @@ from dataclasses import dataclass
 # Override any model via env vars: COUNCIL_CLAUDE_MODEL, etc.
 
 # Full tier (premium)
-CLAUDE_MODEL = os.environ.get("COUNCIL_CLAUDE_MODEL", "claude-opus-4-20250918")
+CLAUDE_MODEL = os.environ.get("COUNCIL_CLAUDE_MODEL", "claude-opus-4-20250514")
 GPT_MODEL = os.environ.get("COUNCIL_GPT_MODEL", "gpt-4.1")
 O3_MODEL = os.environ.get("COUNCIL_O3_MODEL", "o3")
 GEMINI_MODEL = os.environ.get("COUNCIL_GEMINI_MODEL", "gemini/gemini-2.5-pro")
@@ -143,7 +143,7 @@ def get_aggregator(tier: str = DEFAULT_TIER) -> ModelConfig:
 
 
 _FRIENDLY_NAMES = {
-    "claude-opus-4-20250918": "Claude Opus 4.6",
+    "claude-opus-4-20250514": "Claude Opus 4",
     "claude-sonnet-4-20250514": "Claude Sonnet 4",
     "claude-haiku-4-5-20251001": "Claude Haiku 4.5",
     "gpt-4.1": "GPT-4.1",
