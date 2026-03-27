@@ -16,6 +16,16 @@ SCORING_MODEL = ModelConfig(
 )
 
 
+def should_score(succeeded_count: int, tier: str) -> bool:
+    """Decide whether agreement scoring is worth the API call.
+
+    Runs when 3+ models succeeded and tier is balanced or full.
+    Skips on fast tier (scorer cost is proportionally too high)
+    and when fewer than 3 models succeeded (binary agreement is uninformative).
+    """
+    return succeeded_count >= 3 and tier in ("balanced", "full")
+
+
 def parse_agreement_score(text: str) -> tuple[int | None, str | None]:
     """Parse agreement score from model response. JSON first, regex fallback."""
     if not text:
