@@ -15,7 +15,7 @@ from ai_council.prompts import (
     format_other_responses,
 )
 from ai_council.providers import ModelResponse, call_model, call_models_parallel
-from ai_council.scoring import score_agreement
+from ai_council.scoring import score_agreement, should_score
 
 
 @dataclass
@@ -27,10 +27,18 @@ class DebateResult:
     tier: str = DEFAULT_TIER
     agreement_score: int | None = None
     agreement_reason: str | None = None
+    scorer_cost_usd: float = 0.0
+
+    @property
+    def succeeded(self) -> list[ModelResponse]:
+        """Return succeeded responses from the final round."""
+        if not self.rounds:
+            return []
+        return [r for r in self.rounds[-1] if r.succeeded]
 
     @property
     def total_cost_usd(self) -> float:
-        cost = self.synthesis.cost_usd
+        cost = self.synthesis.cost_usd + self.scorer_cost_usd
         for rnd in self.rounds:
             cost += sum(r.cost_usd for r in rnd)
         return cost
@@ -87,9 +95,14 @@ async def run_debate(prompt: str, max_rounds: int = 3, tier: str = DEFAULT_TIER)
 
     # Score agreement on final round
     final_ok = [r for r in prev if r.succeeded]
-    score, reason = await score_agreement(final_ok, prompt)
+    score = None
+    reason = None
+    scorer_cost = 0.0
+    if should_score(len(final_ok), tier):
+        score, reason, scorer_cost = await score_agreement(final_ok, prompt)
 
     return DebateResult(
         rounds=rounds, synthesis=synthesis, num_rounds=len(rounds), total_ms=total,
         tier=tier, agreement_score=score, agreement_reason=reason,
+        scorer_cost_usd=scorer_cost,
     )

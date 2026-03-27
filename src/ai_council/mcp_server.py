@@ -19,7 +19,7 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
 from ai_council.config import DEFAULT_TIER, VALID_TIERS, get_aggregator, get_all_proposers, get_proposers
-from ai_council.cost_tracker import log_query
+from ai_council.cost_tracker import log_query, build_model_details, format_tokens
 from ai_council.strategies.moa import run_moa
 from ai_council.strategies.debate import run_debate
 from ai_council.strategies.redteam import run_redteam
@@ -53,6 +53,7 @@ def _log(result, mode: str, prompt: str) -> None:
         total_cost_usd=result.total_cost_usd,
         total_ms=result.total_ms,
         prompt_preview=prompt,
+        model_details=build_model_details(result),
     )
 
 
@@ -120,7 +121,7 @@ def _format_redteam_result(result, verbose: bool = True) -> str:
 
 @mcp.tool()
 async def council_ask(
-    prompt: str, mode: str = "moa", verbose: bool = True, rounds: int = 3, tier: str = "full"
+    prompt: str, mode: str = "moa", verbose: bool = True, rounds: int = 3, tier: str = "balanced"
 ) -> str:
     """Ask multiple AI models a question and get a synthesized answer.
 
@@ -131,7 +132,7 @@ async def council_ask(
         mode: "moa" (fast synthesis), "debate" (multi-round revision), or "redteam" (adversarial critique).
         verbose: If True, include each model's individual response.
         rounds: Max debate rounds (debate mode only, default 3).
-        tier: Model tier — "fast" (cheap: Haiku+4o-mini+Flash), "balanced" (Sonnet+4.1+Gemini Pro), or "full" (all 6 premium).
+        tier: Model tier — "fast" (cheap), "balanced" (default), or "full" (premium). Override with "full" for complex questions.
     """
     if tier not in VALID_TIERS:
         tier = DEFAULT_TIER
@@ -174,12 +175,12 @@ async def council_review(file_path: str, tier: str = "full") -> str:
 
 
 @mcp.tool()
-async def council_debug(error: str, tier: str = "full") -> str:
+async def council_debug(error: str, tier: str = "balanced") -> str:
     """Debug an error using multiple AI models.
 
     Args:
         error: The error message, stack trace, or description of the issue.
-        tier: Model tier — "fast", "balanced", or "full" (default).
+        tier: Model tier — "fast", "balanced" (default), or "full".
     """
     prompt = (
         f"Debug this error. Identify:\n"
@@ -219,10 +220,17 @@ async def council_research(topic: str, rounds: int = 2, tier: str = "full") -> s
 @mcp.tool()
 async def council_costs() -> str:
     """Show spending summary and budget tracking."""
-    from ai_council.cost_tracker import get_cost_summary, get_cost_by_tier
+    from ai_council.cost_tracker import (
+        get_cost_summary,
+        get_cost_by_tier,
+        get_cost_by_mode,
+        get_cost_by_model,
+    )
 
     summary = get_cost_summary()
     by_tier = get_cost_by_tier()
+    by_mode = get_cost_by_mode()
+    by_model = get_cost_by_model()
 
     lines = [
         "Spending Summary",
@@ -236,6 +244,22 @@ async def council_costs() -> str:
         lines.append("\nBy Tier")
         for tier, cost in by_tier.items():
             lines.append(f"  {tier}: ${cost:.4f}")
+
+    if by_mode:
+        lines.append("\nBy Mode")
+        for mode, cost in by_mode.items():
+            lines.append(f"  {mode}: ${cost:.4f}")
+
+    if by_model:
+        lines.append("\nBy Model")
+        # Sort by cost descending
+        sorted_models = sorted(by_model.items(), key=lambda x: x[1]["cost"], reverse=True)
+        for name, stats in sorted_models:
+            tokens_in = format_tokens(stats["tokens_in"])
+            tokens_out = format_tokens(stats["tokens_out"])
+            lines.append(
+                f"  {name:<22} ${stats['cost']:.4f}  ({stats['calls']} calls, {tokens_in} in / {tokens_out} out)"
+            )
 
     return "\n".join(lines)
 

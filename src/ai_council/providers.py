@@ -33,6 +33,8 @@ class ModelResponse:
     latency_ms: int
     error: str | None = None
     cost_usd: float = 0.0
+    input_tokens: int = 0
+    output_tokens: int = 0
 
     @property
     def succeeded(self) -> bool:
@@ -109,12 +111,21 @@ async def call_model(config: ModelConfig, messages: list[dict]) -> ModelResponse
         except Exception:
             pass  # Cost estimation can fail for unknown models
 
+        # Extract token usage
+        input_tokens = 0
+        output_tokens = 0
+        if hasattr(response, "usage") and response.usage:
+            input_tokens = getattr(response.usage, "prompt_tokens", 0) or 0
+            output_tokens = getattr(response.usage, "completion_tokens", 0) or 0
+
         return ModelResponse(
             model=config.model,
             name=config.name,
             content=response.choices[0].message.content or "",
             latency_ms=elapsed,
             cost_usd=cost,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
         )
     except Exception as e:
         elapsed = int((time.monotonic() - start) * 1000)

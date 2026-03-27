@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from ai_council.config import DEFAULT_TIER, get_aggregator, get_proposers
 from ai_council.prompts import MOA_AGGREGATOR_SYSTEM, MOA_AGGREGATOR_TEMPLATE, format_proposals
 from ai_council.providers import ModelResponse, call_model, call_models_parallel
-from ai_council.scoring import score_agreement
+from ai_council.scoring import score_agreement, should_score
 
 
 @dataclass
@@ -18,6 +18,7 @@ class MoAResult:
     tier: str = DEFAULT_TIER
     agreement_score: int | None = None
     agreement_reason: str | None = None
+    scorer_cost_usd: float = 0.0
 
     @property
     def succeeded(self) -> list[ModelResponse]:
@@ -25,7 +26,7 @@ class MoAResult:
 
     @property
     def total_cost_usd(self) -> float:
-        return sum(p.cost_usd for p in self.proposals) + self.synthesis.cost_usd
+        return sum(p.cost_usd for p in self.proposals) + self.synthesis.cost_usd + self.scorer_cost_usd
 
 
 async def run_moa(prompt: str, tier: str = DEFAULT_TIER) -> MoAResult:
@@ -52,7 +53,11 @@ async def run_moa(prompt: str, tier: str = DEFAULT_TIER) -> MoAResult:
          {"role": "user", "content": agg_prompt}],
     )
 
-    score, reason = await score_agreement(ok, prompt)
+    score = None
+    reason = None
+    scorer_cost = 0.0
+    if should_score(len(ok), tier):
+        score, reason, scorer_cost = await score_agreement(ok, prompt)
 
     return MoAResult(
         proposals=proposals,
@@ -61,4 +66,5 @@ async def run_moa(prompt: str, tier: str = DEFAULT_TIER) -> MoAResult:
         tier=tier,
         agreement_score=score,
         agreement_reason=reason,
+        scorer_cost_usd=scorer_cost,
     )
