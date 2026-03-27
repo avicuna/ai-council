@@ -22,6 +22,7 @@ def log_query(
     total_cost_usd: float,
     total_ms: int,
     prompt_preview: str = "",
+    model_details: list[dict] | None = None,
 ) -> None:
     """Append a cost entry to the log file."""
     COST_DIR.mkdir(parents=True, exist_ok=True)
@@ -36,6 +37,9 @@ def log_query(
         "latency_ms": total_ms,
         "prompt": prompt_preview[:100],  # First 100 chars for context
     }
+
+    if model_details:
+        entry["models_detail"] = model_details
 
     with open(COST_FILE, "a") as f:
         f.write(json.dumps(entry) + "\n")
@@ -126,3 +130,58 @@ def get_cost_by_mode() -> dict[str, float]:
         mode = e.get("mode", "unknown")
         by_mode[mode] = by_mode.get(mode, 0.0) + e.get("cost_usd", 0.0)
     return {k: round(v, 4) for k, v in sorted(by_mode.items())}
+
+
+def get_cost_by_model() -> dict[str, dict]:
+    """Return per-model aggregated stats: cost, calls, tokens in/out.
+
+    Only counts entries that have models_detail (new format).
+    """
+    entries = _load_entries()
+    by_model: dict[str, dict] = {}
+
+    for e in entries:
+        for m in e.get("models_detail", []):
+            name = m.get("name", "unknown")
+            if name not in by_model:
+                by_model[name] = {"cost": 0.0, "calls": 0, "tokens_in": 0, "tokens_out": 0}
+            by_model[name]["cost"] = round(by_model[name]["cost"] + m.get("cost_usd", 0.0), 4)
+            by_model[name]["calls"] += 1
+            by_model[name]["tokens_in"] += m.get("input_tokens", 0)
+            by_model[name]["tokens_out"] += m.get("output_tokens", 0)
+
+    return by_model
+
+
+def get_usage_summary() -> dict:
+    """Return aggregate usage stats: total tokens, averages."""
+    entries = _load_entries()
+    if not entries:
+        return {
+            "total_tokens_in": 0,
+            "total_tokens_out": 0,
+            "total_queries": 0,
+            "avg_cost_per_query": 0.0,
+            "avg_latency_ms": 0,
+        }
+
+    total_in = 0
+    total_out = 0
+    total_cost = 0.0
+    total_latency = 0
+
+    for e in entries:
+        total_cost += e.get("cost_usd", 0.0)
+        total_latency += e.get("latency_ms", 0)
+        for m in e.get("models_detail", []):
+            total_in += m.get("input_tokens", 0)
+            total_out += m.get("output_tokens", 0)
+
+    n = len(entries)
+    return {
+        "total_tokens_in": total_in,
+        "total_tokens_out": total_out,
+        "total_queries": n,
+        "avg_cost_per_query": round(total_cost / n, 4),
+        "avg_latency_ms": total_latency // n,
+    }
