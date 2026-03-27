@@ -19,12 +19,14 @@ console = Console()
 
 # ─── Shared CLI options ──────────────────────────────────────
 
-_tier_option = click.option(
-    "--tier", "-t",
-    type=click.Choice(VALID_TIERS),
-    default=DEFAULT_TIER,
-    help="Model tier: fast (~10x cheaper), balanced (mid), full (premium).",
-)
+def _tier_option(default: str = DEFAULT_TIER):
+    """Create a tier option with a specific default."""
+    return click.option(
+        "--tier", "-t",
+        type=click.Choice(VALID_TIERS),
+        default=default,
+        help=f"Model tier: fast (~10x cheaper), balanced (mid), full (premium). Default: {default}.",
+    )
 
 
 def _score_color(score: int | None) -> str:
@@ -45,6 +47,39 @@ def _cost_str(cost: float) -> str:
     return f"[dim]${cost:.2f}[/dim]"
 
 
+def _build_model_details(result) -> list[dict]:
+    """Extract per-model detail dicts from a strategy result."""
+    responses = []
+    if hasattr(result, "proposals"):
+        responses.extend(result.proposals)
+    if hasattr(result, "rounds"):
+        for rnd in result.rounds:
+            responses.extend(rnd)
+    if hasattr(result, "defenses"):
+        responses.extend(result.defenses)
+    if hasattr(result, "initial_attack"):
+        responses.append(result.initial_attack)
+    if hasattr(result, "targeted_attack"):
+        responses.append(result.targeted_attack)
+    if hasattr(result, "synthesis"):
+        responses.append(result.synthesis)
+
+    details = []
+    for r in responses:
+        if not r.model:
+            continue
+        details.append({
+            "name": r.name,
+            "model": r.model,
+            "cost_usd": r.cost_usd,
+            "input_tokens": r.input_tokens,
+            "output_tokens": r.output_tokens,
+            "latency_ms": r.latency_ms,
+            "succeeded": r.succeeded,
+        })
+    return details
+
+
 def _log_cost(result, mode: str, prompt: str) -> None:
     """Log query cost to persistent tracker."""
     from ai_council.cost_tracker import log_query
@@ -58,7 +93,15 @@ def _log_cost(result, mode: str, prompt: str) -> None:
         total_cost_usd=result.total_cost_usd,
         total_ms=result.total_ms,
         prompt_preview=prompt,
+        model_details=_build_model_details(result),
     )
+
+
+def _format_tokens(n: int) -> str:
+    """Format token count: 1500 -> '1.5k', 800 -> '800'."""
+    if n >= 1000:
+        return f"{n / 1000:.1f}k"
+    return str(n)
 
 
 def _read_stdin() -> str | None:
@@ -79,7 +122,7 @@ def cli():
 @click.option("--verbose", "-v", is_flag=True, help="Show individual model responses.")
 @click.option("--rounds", "-r", default=3, help="Max debate rounds.")
 @click.option("--file", "-f", "file_path", type=click.Path(exists=True), help="Attach a file.")
-@_tier_option
+@_tier_option("balanced")
 def ask(prompt: str | None, mode: str, verbose: bool, rounds: int, file_path: str | None, tier: str):
     """Ask the council a question."""
     parts = []
@@ -112,7 +155,7 @@ def ask(prompt: str | None, mode: str, verbose: bool, rounds: int, file_path: st
 
 @cli.command()
 @click.argument("file_path", type=click.Path(exists=True))
-@_tier_option
+@_tier_option("full")
 def review(file_path: str, tier: str):
     """Code review a file using the council."""
     from pathlib import Path
@@ -129,7 +172,7 @@ def review(file_path: str, tier: str):
 
 @cli.command()
 @click.argument("error", required=False)
-@_tier_option
+@_tier_option("balanced")
 def debug(error: str | None, tier: str):
     """Debug an error using the council."""
     parts = []
@@ -159,7 +202,7 @@ def debug(error: str | None, tier: str):
 @cli.command()
 @click.argument("topic")
 @click.option("--rounds", "-r", default=2, help="Number of debate rounds.")
-@_tier_option
+@_tier_option("full")
 def research(topic: str, rounds: int, tier: str):
     """Research a topic using debate mode."""
     prompt = (
@@ -176,7 +219,7 @@ def research(topic: str, rounds: int, tier: str):
 
 
 @cli.command()
-@_tier_option
+@_tier_option()
 def models(tier: str):
     """Show configured models and API key status."""
     import os
@@ -217,10 +260,12 @@ def models(tier: str):
 @cli.command()
 def costs():
     """Show spending summary."""
-    from ai_council.cost_tracker import get_cost_summary, get_cost_by_tier
+    from ai_council.cost_tracker import get_cost_summary, get_cost_by_tier, get_cost_by_mode, get_cost_by_model
 
     summary = get_cost_summary()
     by_tier = get_cost_by_tier()
+    by_mode = get_cost_by_mode()
+    by_model = get_cost_by_model()
 
     console.print("[bold]Spending Summary[/bold]\n")
     console.print(f"  Today:      ${summary['today']:.4f}  ({summary['queries_today']} queries)")
@@ -232,6 +277,19 @@ def costs():
         console.print("\n[bold]By Tier[/bold]\n")
         for tier, cost in by_tier.items():
             console.print(f"  {tier}: ${cost:.4f}")
+
+    if by_mode:
+        console.print("\n[bold]By Mode[/bold]\n")
+        for mode, cost in by_mode.items():
+            console.print(f"  {mode}: ${cost:.4f}")
+
+    if by_model:
+        console.print("\n[bold]By Model[/bold]\n")
+        sorted_models = sorted(by_model.items(), key=lambda x: x[1]["cost"], reverse=True)
+        for name, stats in sorted_models:
+            tokens_in = _format_tokens(stats["tokens_in"])
+            tokens_out = _format_tokens(stats["tokens_out"])
+            console.print(f"  {name:<22} ${stats['cost']:.4f}  ({stats['calls']} calls, {tokens_in} in / {tokens_out} out)")
 
     console.print(f"\n[dim]Log: ~/.ai-council/costs.jsonl[/dim]")
 
