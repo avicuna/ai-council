@@ -19,7 +19,7 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
 from ai_council.config import DEFAULT_TIER, VALID_TIERS, get_aggregator, get_all_proposers, get_proposers
-from ai_council.cost_tracker import log_query
+from ai_council.cost_tracker import log_query, build_model_details, format_tokens
 from ai_council.strategies.moa import run_moa
 from ai_council.strategies.debate import run_debate
 from ai_council.strategies.redteam import run_redteam
@@ -42,39 +42,6 @@ def _cost_line(cost: float) -> str:
     return f"Cost: ${cost:.2f}"
 
 
-def _build_model_details(result) -> list[dict]:
-    """Extract per-model detail dicts from a strategy result."""
-    details = []
-    responses = []
-    if hasattr(result, "proposals"):
-        responses.extend(result.proposals)
-    if hasattr(result, "rounds"):
-        for rnd in result.rounds:
-            responses.extend(rnd)
-    if hasattr(result, "defenses"):
-        responses.extend(result.defenses)
-    if hasattr(result, "initial_attack"):
-        responses.append(result.initial_attack)
-    if hasattr(result, "targeted_attack"):
-        responses.append(result.targeted_attack)
-    if hasattr(result, "synthesis"):
-        responses.append(result.synthesis)
-
-    for r in responses:
-        if not r.model:
-            continue
-        details.append({
-            "name": r.name,
-            "model": r.model,
-            "cost_usd": r.cost_usd,
-            "input_tokens": r.input_tokens,
-            "output_tokens": r.output_tokens,
-            "latency_ms": r.latency_ms,
-            "succeeded": r.succeeded,
-        })
-    return details
-
-
 def _log(result, mode: str, prompt: str) -> None:
     models = [p.name for p in result.proposals] if hasattr(result, "proposals") else []
     succeeded = len(result.succeeded) if hasattr(result, "succeeded") else 0
@@ -86,7 +53,7 @@ def _log(result, mode: str, prompt: str) -> None:
         total_cost_usd=result.total_cost_usd,
         total_ms=result.total_ms,
         prompt_preview=prompt,
-        model_details=_build_model_details(result),
+        model_details=build_model_details(result),
     )
 
 
@@ -250,13 +217,6 @@ async def council_research(topic: str, rounds: int = 2, tier: str = "full") -> s
     return _format_debate_result(result)
 
 
-def _format_tokens(n: int) -> str:
-    """Format token count: 1500 -> '1.5k', 800 -> '800'."""
-    if n >= 1000:
-        return f"{n / 1000:.1f}k"
-    return str(n)
-
-
 @mcp.tool()
 async def council_costs() -> str:
     """Show spending summary and budget tracking."""
@@ -295,8 +255,8 @@ async def council_costs() -> str:
         # Sort by cost descending
         sorted_models = sorted(by_model.items(), key=lambda x: x[1]["cost"], reverse=True)
         for name, stats in sorted_models:
-            tokens_in = _format_tokens(stats["tokens_in"])
-            tokens_out = _format_tokens(stats["tokens_out"])
+            tokens_in = format_tokens(stats["tokens_in"])
+            tokens_out = format_tokens(stats["tokens_out"])
             lines.append(
                 f"  {name:<22} ${stats['cost']:.4f}  ({stats['calls']} calls, {tokens_in} in / {tokens_out} out)"
             )

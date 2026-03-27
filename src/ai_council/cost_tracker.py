@@ -185,3 +185,43 @@ def get_usage_summary() -> dict:
         "avg_cost_per_query": round(total_cost / n, 4),
         "avg_latency_ms": total_latency // n,
     }
+
+
+def format_tokens(n: int) -> str:
+    """Format token count for display: 1500 -> '1.5k', 800 -> '800'."""
+    if n >= 1000:
+        return f"{n / 1000:.1f}k"
+    return str(n)
+
+
+def build_model_details(result) -> list[dict]:
+    """Extract per-model detail dicts from a strategy result for logging."""
+    responses = []
+    if hasattr(result, "proposals"):
+        responses.extend(result.proposals)
+    if hasattr(result, "rounds"):
+        for rnd in result.rounds:
+            responses.extend(rnd)
+    if hasattr(result, "defenses"):
+        responses.extend(result.defenses)
+    if hasattr(result, "initial_attack"):
+        responses.append(result.initial_attack)
+    if hasattr(result, "targeted_attack"):
+        responses.append(result.targeted_attack)
+    if hasattr(result, "synthesis"):
+        responses.append(result.synthesis)
+
+    details = []
+    for r in responses:
+        if not r.model:
+            continue
+        details.append({
+            "name": r.name,
+            "model": r.model,
+            "cost_usd": r.cost_usd,
+            "input_tokens": r.input_tokens,
+            "output_tokens": r.output_tokens,
+            "latency_ms": r.latency_ms,
+            "succeeded": r.succeeded,
+        })
+    return details

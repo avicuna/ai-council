@@ -47,42 +47,9 @@ def _cost_str(cost: float) -> str:
     return f"[dim]${cost:.2f}[/dim]"
 
 
-def _build_model_details(result) -> list[dict]:
-    """Extract per-model detail dicts from a strategy result."""
-    responses = []
-    if hasattr(result, "proposals"):
-        responses.extend(result.proposals)
-    if hasattr(result, "rounds"):
-        for rnd in result.rounds:
-            responses.extend(rnd)
-    if hasattr(result, "defenses"):
-        responses.extend(result.defenses)
-    if hasattr(result, "initial_attack"):
-        responses.append(result.initial_attack)
-    if hasattr(result, "targeted_attack"):
-        responses.append(result.targeted_attack)
-    if hasattr(result, "synthesis"):
-        responses.append(result.synthesis)
-
-    details = []
-    for r in responses:
-        if not r.model:
-            continue
-        details.append({
-            "name": r.name,
-            "model": r.model,
-            "cost_usd": r.cost_usd,
-            "input_tokens": r.input_tokens,
-            "output_tokens": r.output_tokens,
-            "latency_ms": r.latency_ms,
-            "succeeded": r.succeeded,
-        })
-    return details
-
-
 def _log_cost(result, mode: str, prompt: str) -> None:
     """Log query cost to persistent tracker."""
-    from ai_council.cost_tracker import log_query
+    from ai_council.cost_tracker import log_query, build_model_details
     models = [p.name for p in result.proposals if hasattr(result, "proposals")]
     succeeded = len(result.succeeded) if hasattr(result, "succeeded") else 0
     log_query(
@@ -93,15 +60,8 @@ def _log_cost(result, mode: str, prompt: str) -> None:
         total_cost_usd=result.total_cost_usd,
         total_ms=result.total_ms,
         prompt_preview=prompt,
-        model_details=_build_model_details(result),
+        model_details=build_model_details(result),
     )
-
-
-def _format_tokens(n: int) -> str:
-    """Format token count: 1500 -> '1.5k', 800 -> '800'."""
-    if n >= 1000:
-        return f"{n / 1000:.1f}k"
-    return str(n)
 
 
 def _read_stdin() -> str | None:
@@ -260,7 +220,7 @@ def models(tier: str):
 @cli.command()
 def costs():
     """Show spending summary."""
-    from ai_council.cost_tracker import get_cost_summary, get_cost_by_tier, get_cost_by_mode, get_cost_by_model
+    from ai_council.cost_tracker import get_cost_summary, get_cost_by_tier, get_cost_by_mode, get_cost_by_model, format_tokens
 
     summary = get_cost_summary()
     by_tier = get_cost_by_tier()
@@ -287,8 +247,8 @@ def costs():
         console.print("\n[bold]By Model[/bold]\n")
         sorted_models = sorted(by_model.items(), key=lambda x: x[1]["cost"], reverse=True)
         for name, stats in sorted_models:
-            tokens_in = _format_tokens(stats["tokens_in"])
-            tokens_out = _format_tokens(stats["tokens_out"])
+            tokens_in = format_tokens(stats["tokens_in"])
+            tokens_out = format_tokens(stats["tokens_out"])
             console.print(f"  {name:<22} ${stats['cost']:.4f}  ({stats['calls']} calls, {tokens_in} in / {tokens_out} out)")
 
     console.print(f"\n[dim]Log: ~/.ai-council/costs.jsonl[/dim]")
