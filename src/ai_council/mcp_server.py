@@ -42,6 +42,39 @@ def _cost_line(cost: float) -> str:
     return f"Cost: ${cost:.2f}"
 
 
+def _build_model_details(result) -> list[dict]:
+    """Extract per-model detail dicts from a strategy result."""
+    details = []
+    responses = []
+    if hasattr(result, "proposals"):
+        responses.extend(result.proposals)
+    if hasattr(result, "rounds"):
+        for rnd in result.rounds:
+            responses.extend(rnd)
+    if hasattr(result, "defenses"):
+        responses.extend(result.defenses)
+    if hasattr(result, "initial_attack"):
+        responses.append(result.initial_attack)
+    if hasattr(result, "targeted_attack"):
+        responses.append(result.targeted_attack)
+    if hasattr(result, "synthesis"):
+        responses.append(result.synthesis)
+
+    for r in responses:
+        if not r.model:
+            continue
+        details.append({
+            "name": r.name,
+            "model": r.model,
+            "cost_usd": r.cost_usd,
+            "input_tokens": r.input_tokens,
+            "output_tokens": r.output_tokens,
+            "latency_ms": r.latency_ms,
+            "succeeded": r.succeeded,
+        })
+    return details
+
+
 def _log(result, mode: str, prompt: str) -> None:
     models = [p.name for p in result.proposals] if hasattr(result, "proposals") else []
     succeeded = len(result.succeeded) if hasattr(result, "succeeded") else 0
@@ -53,6 +86,7 @@ def _log(result, mode: str, prompt: str) -> None:
         total_cost_usd=result.total_cost_usd,
         total_ms=result.total_ms,
         prompt_preview=prompt,
+        model_details=_build_model_details(result),
     )
 
 
@@ -120,7 +154,7 @@ def _format_redteam_result(result, verbose: bool = True) -> str:
 
 @mcp.tool()
 async def council_ask(
-    prompt: str, mode: str = "moa", verbose: bool = True, rounds: int = 3, tier: str = "full"
+    prompt: str, mode: str = "moa", verbose: bool = True, rounds: int = 3, tier: str = "balanced"
 ) -> str:
     """Ask multiple AI models a question and get a synthesized answer.
 
@@ -131,7 +165,7 @@ async def council_ask(
         mode: "moa" (fast synthesis), "debate" (multi-round revision), or "redteam" (adversarial critique).
         verbose: If True, include each model's individual response.
         rounds: Max debate rounds (debate mode only, default 3).
-        tier: Model tier — "fast" (cheap: Haiku+4o-mini+Flash), "balanced" (Sonnet+4.1+Gemini Pro), or "full" (all 6 premium).
+        tier: Model tier — "fast" (cheap), "balanced" (default), or "full" (premium). Override with "full" for complex questions.
     """
     if tier not in VALID_TIERS:
         tier = DEFAULT_TIER
@@ -174,12 +208,12 @@ async def council_review(file_path: str, tier: str = "full") -> str:
 
 
 @mcp.tool()
-async def council_debug(error: str, tier: str = "full") -> str:
+async def council_debug(error: str, tier: str = "balanced") -> str:
     """Debug an error using multiple AI models.
 
     Args:
         error: The error message, stack trace, or description of the issue.
-        tier: Model tier — "fast", "balanced", or "full" (default).
+        tier: Model tier — "fast", "balanced" (default), or "full".
     """
     prompt = (
         f"Debug this error. Identify:\n"
@@ -216,13 +250,27 @@ async def council_research(topic: str, rounds: int = 2, tier: str = "full") -> s
     return _format_debate_result(result)
 
 
+def _format_tokens(n: int) -> str:
+    """Format token count: 1500 -> '1.5k', 800 -> '800'."""
+    if n >= 1000:
+        return f"{n / 1000:.1f}k"
+    return str(n)
+
+
 @mcp.tool()
 async def council_costs() -> str:
     """Show spending summary and budget tracking."""
-    from ai_council.cost_tracker import get_cost_summary, get_cost_by_tier
+    from ai_council.cost_tracker import (
+        get_cost_summary,
+        get_cost_by_tier,
+        get_cost_by_mode,
+        get_cost_by_model,
+    )
 
     summary = get_cost_summary()
     by_tier = get_cost_by_tier()
+    by_mode = get_cost_by_mode()
+    by_model = get_cost_by_model()
 
     lines = [
         "Spending Summary",
@@ -236,6 +284,22 @@ async def council_costs() -> str:
         lines.append("\nBy Tier")
         for tier, cost in by_tier.items():
             lines.append(f"  {tier}: ${cost:.4f}")
+
+    if by_mode:
+        lines.append("\nBy Mode")
+        for mode, cost in by_mode.items():
+            lines.append(f"  {mode}: ${cost:.4f}")
+
+    if by_model:
+        lines.append("\nBy Model")
+        # Sort by cost descending
+        sorted_models = sorted(by_model.items(), key=lambda x: x[1]["cost"], reverse=True)
+        for name, stats in sorted_models:
+            tokens_in = _format_tokens(stats["tokens_in"])
+            tokens_out = _format_tokens(stats["tokens_out"])
+            lines.append(
+                f"  {name:<22} ${stats['cost']:.4f}  ({stats['calls']} calls, {tokens_in} in / {tokens_out} out)"
+            )
 
     return "\n".join(lines)
 
