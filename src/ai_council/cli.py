@@ -50,7 +50,7 @@ def _cost_str(cost: float) -> str:
 def _log_cost(result, mode: str, prompt: str) -> None:
     """Log query cost to persistent tracker."""
     from ai_council.cost_tracker import log_query, build_model_details
-    models = [p.name for p in result.proposals if hasattr(result, "proposals")]
+    models = [p.name for p in result.proposals] if hasattr(result, "proposals") else []
     succeeded = len(result.succeeded) if hasattr(result, "succeeded") else 0
     log_query(
         mode=mode,

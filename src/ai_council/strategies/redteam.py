@@ -33,6 +33,11 @@ class RedTeamResult:
     scorer_cost_usd: float = 0.0
 
     @property
+    def succeeded(self) -> list[ModelResponse]:
+        """Return succeeded proposals."""
+        return [p for p in self.proposals if p.succeeded]
+
+    @property
     def total_cost_usd(self) -> float:
         cost = sum(p.cost_usd for p in self.proposals)
         cost += self.initial_attack.cost_usd

@@ -30,6 +30,13 @@ class DebateResult:
     scorer_cost_usd: float = 0.0
 
     @property
+    def succeeded(self) -> list[ModelResponse]:
+        """Return succeeded responses from the final round."""
+        if not self.rounds:
+            return []
+        return [r for r in self.rounds[-1] if r.succeeded]
+
+    @property
     def total_cost_usd(self) -> float:
         cost = self.synthesis.cost_usd + self.scorer_cost_usd
         for rnd in self.rounds:
