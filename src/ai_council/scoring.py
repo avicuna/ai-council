@@ -48,11 +48,11 @@ def parse_agreement_score(text: str) -> tuple[int | None, str | None]:
 
 async def score_agreement(
     proposals: list[ModelResponse], prompt: str
-) -> tuple[int | None, str | None]:
-    """Score agreement among proposals. Returns (score, reason) or (None, None)."""
+) -> tuple[int | None, str | None, float]:
+    """Score agreement among proposals. Returns (score, reason, cost_usd)."""
     ok = [p for p in proposals if p.succeeded]
     if len(ok) < 2:
-        return None, None
+        return None, None, 0.0
 
     scoring_prompt = SCORING_PROMPT.format(
         prompt=prompt, proposals=format_proposals(ok)
@@ -63,6 +63,7 @@ async def score_agreement(
     )
 
     if not result.succeeded:
-        return None, None
+        return None, None, result.cost_usd
 
-    return parse_agreement_score(result.content)
+    score, reason = parse_agreement_score(result.content)
+    return score, reason, result.cost_usd

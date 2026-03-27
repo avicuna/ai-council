@@ -16,7 +16,7 @@ from ai_council.prompts import (
     format_proposals,
 )
 from ai_council.providers import ModelResponse, call_model, call_models_parallel
-from ai_council.scoring import score_agreement
+from ai_council.scoring import score_agreement, should_score
 
 
 @dataclass
@@ -30,6 +30,7 @@ class RedTeamResult:
     tier: str = DEFAULT_TIER
     agreement_score: int | None = None
     agreement_reason: str | None = None
+    scorer_cost_usd: float = 0.0
 
     @property
     def total_cost_usd(self) -> float:
@@ -38,6 +39,7 @@ class RedTeamResult:
         cost += sum(d.cost_usd for d in self.defenses)
         cost += self.targeted_attack.cost_usd
         cost += self.synthesis.cost_usd
+        cost += self.scorer_cost_usd
         return cost
 
 
@@ -138,11 +140,16 @@ async def run_redteam(prompt: str, tier: str = DEFAULT_TIER) -> RedTeamResult:
 
     # Score agreement on defenses (or proposals if no defenses)
     score_targets = ok_defenses if ok_defenses else ok_proposals
-    score, reason = await score_agreement(score_targets, prompt)
+    score = None
+    reason = None
+    scorer_cost = 0.0
+    if should_score(len(score_targets), tier):
+        score, reason, scorer_cost = await score_agreement(score_targets, prompt)
 
     return RedTeamResult(
         proposals=proposals, initial_attack=initial_attack,
         defenses=defenses, targeted_attack=targeted_attack,
         synthesis=synthesis, total_ms=total, tier=tier,
         agreement_score=score, agreement_reason=reason,
+        scorer_cost_usd=scorer_cost,
     )
