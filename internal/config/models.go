@@ -22,9 +22,9 @@ type TierConfig struct {
 
 // Reasoning models — these use built-in reasoning, no temperature, system→user prefix.
 var reasoningModels = map[string]bool{
-	"o3":                        true,
-	"o3-mini":                   true,
-	"o4-mini":                   true,
+	"o3":                         true,
+	"o3-mini":                    true,
+	"o4-mini":                    true,
 	"deepseek/deepseek-reasoner": true,
 }
 
@@ -49,12 +49,12 @@ var friendlyNames = map[string]string{
 
 // Default model IDs (overridable via env vars).
 var (
-	claudeModel    = getEnv("COUNCIL_CLAUDE_MODEL", "claude-opus-4-20250918")
-	gptModel       = getEnv("COUNCIL_GPT_MODEL", "gpt-4.1")
-	o3Model        = getEnv("COUNCIL_O3_MODEL", "o3")
-	geminiModel    = getEnv("COUNCIL_GEMINI_MODEL", "gemini/gemini-2.5-pro")
-	deepseekModel  = getEnv("COUNCIL_DEEPSEEK_MODEL", "deepseek/deepseek-reasoner")
-	grokModel      = getEnv("COUNCIL_GROK_MODEL", "xai/grok-3")
+	claudeModel     = getEnv("COUNCIL_CLAUDE_MODEL", "claude-opus-4-20250918")
+	gptModel        = getEnv("COUNCIL_GPT_MODEL", "gpt-4.1")
+	o3Model         = getEnv("COUNCIL_O3_MODEL", "o3")
+	geminiModel     = getEnv("COUNCIL_GEMINI_MODEL", "gemini/gemini-2.5-pro")
+	deepseekModel   = getEnv("COUNCIL_DEEPSEEK_MODEL", "deepseek/deepseek-reasoner")
+	grokModel       = getEnv("COUNCIL_GROK_MODEL", "xai/grok-3")
 	aggregatorModel = getEnv("COUNCIL_AGGREGATOR_MODEL", claudeModel)
 )
 
@@ -165,7 +165,14 @@ func FriendlyName(model string) string {
 	if idx := strings.LastIndex(model, "/"); idx >= 0 {
 		base = model[idx+1:]
 	}
-	return strings.Title(strings.ReplaceAll(base, "-", " "))
+	// Title-case each word (avoids deprecated strings.Title).
+	words := strings.Fields(strings.ReplaceAll(base, "-", " "))
+	for i, w := range words {
+		if len(w) > 0 {
+			words[i] = strings.ToUpper(w[:1]) + w[1:]
+		}
+	}
+	return strings.Join(words, " ")
 }
 
 // getEnv reads an environment variable with a fallback default.
