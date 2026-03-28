@@ -5,10 +5,13 @@ Query up to 6 AI models in parallel and synthesize their best answer. Three orch
 ## Install
 
 ```bash
-go install github.com/avicuna/ai-council-personal@latest
-
-# Or build from source
+# Build from source
+git clone https://github.com/avicuna/ai-council.git
+cd ai-council
 go build -o council-personal .
+
+# Move to PATH
+mv council-personal ~/go/bin/  # or /usr/local/bin/
 ```
 
 ## Setup
@@ -28,7 +31,7 @@ export XAI_API_KEY="..."           # Optional
 |------|--------|------------|----------|
 | **fast** | Haiku 4.5, GPT-4o-mini, Gemini Flash | Haiku 4.5 | Quick questions, ~10x cheaper |
 | **balanced** | Sonnet 4, GPT-4.1, Gemini 2.5 Pro | Sonnet 4 | Good quality, moderate cost |
-| **full** | Opus 4, GPT-4.1, o3, Gemini Pro, DeepSeek R1, Grok 3 | Opus 4 | Maximum quality, 6 models |
+| **full** | Opus 4, GPT-4.1, o3, Gemini 2.5 Pro, DeepSeek R1, Grok 3 | Opus 4 | Maximum quality, 6 models |
 
 Only models with API keys configured are used. Works with 2+ models.
 
@@ -106,7 +109,7 @@ All MCP tools support a `tier` parameter (`"fast"`, `"balanced"`, `"full"`).
 export COUNCIL_CLAUDE_MODEL="claude-sonnet-4-20250514"
 export COUNCIL_GPT_MODEL="gpt-4o"
 export COUNCIL_O3_MODEL="o3-mini"
-export COUNCIL_GEMINI_MODEL="gemini-2.0-flash"
+export COUNCIL_GEMINI_MODEL="gemini/gemini-2.0-flash"
 export COUNCIL_DEEPSEEK_MODEL="deepseek/deepseek-chat"
 export COUNCIL_GROK_MODEL="xai/grok-3"
 export COUNCIL_AGGREGATOR_MODEL="claude-opus-4-20250918"
