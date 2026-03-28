@@ -12,4 +12,5 @@ func RegisterCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(researchCmd)
 	rootCmd.AddCommand(modelsCmd)
 	rootCmd.AddCommand(costsCmd)
+	rootCmd.AddCommand(mcpCmd) // Hidden MCP server command
 }
