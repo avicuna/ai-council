@@ -8,7 +8,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var version = "dev"
+
 var rootCmd = &cobra.Command{
+	Version: version,
 	Use:   "council-personal",
 	Short: "AI Council — Personal Edition",
 	Long: `AI Council queries multiple flagship AI models in parallel and synthesizes their best answer.
