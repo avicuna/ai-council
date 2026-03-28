@@ -66,7 +66,7 @@ func (d *Debate) Execute(ctx context.Context, opts *Options) (*Result, error) {
 		select {
 		case <-ctx.Done():
 			// Early cancellation - return what we have so far
-			return buildDebateResult(debateRounds, opts, time.Since(start).Milliseconds())
+			return buildDebateResult(ctx, debateRounds, opts, time.Since(start).Milliseconds())
 		default:
 		}
 
@@ -119,11 +119,11 @@ func (d *Debate) Execute(ctx context.Context, opts *Options) (*Result, error) {
 		})
 	}
 
-	return buildDebateResult(debateRounds, opts, time.Since(start).Milliseconds())
+	return buildDebateResult(ctx, debateRounds, opts, time.Since(start).Milliseconds())
 }
 
 // buildDebateResult constructs the final result from debate rounds.
-func buildDebateResult(debateRounds []prompt.DebateRound, opts *Options, totalMs int64) (*Result, error) {
+func buildDebateResult(ctx context.Context, debateRounds []prompt.DebateRound, opts *Options, totalMs int64) (*Result, error) {
 	if len(debateRounds) == 0 {
 		return nil, fmt.Errorf("no debate rounds completed")
 	}
@@ -147,7 +147,7 @@ func buildDebateResult(debateRounds []prompt.DebateRound, opts *Options, totalMs
 		MaxTokens:    4000,
 	}
 
-	synthesis, err := opts.Aggregator.Query(context.Background(), judgeReq)
+	synthesis, err := opts.Aggregator.Query(ctx, judgeReq)
 	if err != nil {
 		return nil, fmt.Errorf("judge failed: %w", err)
 	}
@@ -157,7 +157,7 @@ func buildDebateResult(debateRounds []prompt.DebateRound, opts *Options, totalMs
 	var agreementReason string
 
 	if opts.Scorer != nil {
-		score, err := scoring.ScoreAgreement(context.Background(), opts.Scorer, finalRound.Responses, opts.Request.UserPrompt)
+		score, err := scoring.ScoreAgreement(ctx, opts.Scorer, finalRound.Responses, opts.Request.UserPrompt)
 		if err != nil {
 			agreementReason = fmt.Sprintf("scoring failed: %v", err)
 		} else if score != nil {
