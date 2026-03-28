@@ -9,7 +9,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "ai-council",
+	Use:   "council-personal",
 	Short: "AI Council — Personal Edition",
 	Long: `AI Council queries multiple flagship AI models in parallel and synthesizes their best answer.
 
@@ -28,7 +28,7 @@ Commands:
   models    Display available models for a tier
   costs     Display cost summary and breakdowns
 
-Use "ai-council [command] --help" for more information about a command.`,
+Use "council-personal [command] --help" for more information about a command.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},
