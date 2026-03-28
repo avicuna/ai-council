@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/avicuna/ai-council-personal/internal/config"
+	"github.com/avicuna/ai-council-personal/internal/cost"
 	"github.com/avicuna/ai-council-personal/internal/provider"
 	"github.com/avicuna/ai-council-personal/internal/strategy"
 	"github.com/charmbracelet/lipgloss"
@@ -20,16 +21,6 @@ func init() {
 		pterm.DisableStyling()
 		lipgloss.SetColorProfile(termenv.Ascii)
 	}
-}
-
-// Cost tracking types (placeholder until cost package is implemented)
-type Summary struct {
-	Today        float64
-	Week         float64
-	Month        float64
-	AllTime      float64
-	QueryCount   int
-	QueriesToday int
 }
 
 // Color styles
@@ -246,7 +237,7 @@ func RenderModels(tier string, proposers []config.ModelConfig, aggregator config
 }
 
 // RenderCosts formats cost summary tables.
-func RenderCosts(summary Summary, byTier map[string]float64, byMode map[string]float64) string {
+func RenderCosts(summary *cost.Summary, byTier []cost.TierBreakdown, byMode []cost.ModeBreakdown) string {
 	var b strings.Builder
 
 	// Overall summary
@@ -264,8 +255,11 @@ func RenderCosts(summary Summary, byTier map[string]float64, byMode map[string]f
 	if len(byTier) > 0 {
 		b.WriteString(headerStyle.Render("Cost by Tier"))
 		b.WriteString("\n\n")
-		for tier, cost := range byTier {
-			b.WriteString(fmt.Sprintf("%-10s %s\n", tier+":", formatCostValue(cost)))
+		for _, breakdown := range byTier {
+			b.WriteString(fmt.Sprintf("%-10s %s (%d queries)\n",
+				breakdown.Tier+":",
+				formatCostValue(breakdown.CostUSD),
+				breakdown.Queries))
 		}
 		b.WriteString("\n")
 	}
@@ -274,8 +268,11 @@ func RenderCosts(summary Summary, byTier map[string]float64, byMode map[string]f
 	if len(byMode) > 0 {
 		b.WriteString(headerStyle.Render("Cost by Mode"))
 		b.WriteString("\n\n")
-		for mode, cost := range byMode {
-			b.WriteString(fmt.Sprintf("%-10s %s\n", mode+":", formatCostValue(cost)))
+		for _, breakdown := range byMode {
+			b.WriteString(fmt.Sprintf("%-10s %s (%d queries)\n",
+				breakdown.Mode+":",
+				formatCostValue(breakdown.CostUSD),
+				breakdown.Queries))
 		}
 	}
 

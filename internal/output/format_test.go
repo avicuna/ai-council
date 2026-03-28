@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/avicuna/ai-council-personal/internal/config"
+	"github.com/avicuna/ai-council-personal/internal/cost"
 	"github.com/avicuna/ai-council-personal/internal/provider"
 	"github.com/avicuna/ai-council-personal/internal/strategy"
 )
@@ -197,7 +198,7 @@ func TestRenderModels(t *testing.T) {
 }
 
 func TestRenderCosts(t *testing.T) {
-	summary := Summary{
+	summary := &cost.Summary{
 		Today:        1.25,
 		Week:         8.50,
 		Month:        32.75,
@@ -205,15 +206,15 @@ func TestRenderCosts(t *testing.T) {
 		QueryCount:   523,
 		QueriesToday: 15,
 	}
-	byTier := map[string]float64{
-		"fast":     5.20,
-		"balanced": 15.80,
-		"full":     135.40,
+	byTier := []cost.TierBreakdown{
+		{Tier: "fast", CostUSD: 5.20, Queries: 50},
+		{Tier: "balanced", CostUSD: 15.80, Queries: 100},
+		{Tier: "full", CostUSD: 135.40, Queries: 373},
 	}
-	byMode := map[string]float64{
-		"moa":      100.50,
-		"debate":   35.90,
-		"red-team": 20.00,
+	byMode := []cost.ModeBreakdown{
+		{Mode: "moa", CostUSD: 100.50, Queries: 350},
+		{Mode: "debate", CostUSD: 35.90, Queries: 120},
+		{Mode: "red-team", CostUSD: 20.00, Queries: 53},
 	}
 
 	output := RenderCosts(summary, byTier, byMode)

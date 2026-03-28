@@ -4,13 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/avicuna/ai-council-personal/internal/config"
+	"github.com/avicuna/ai-council-personal/cmd"
 	"github.com/spf13/cobra"
-)
-
-var (
-	// Global flags
-	tier string
 )
 
 var rootCmd = &cobra.Command{
@@ -23,40 +18,25 @@ Supports three tiers:
   - balanced: Mid-tier models (Sonnet, GPT-4.1, Gemini 2.5 Pro)
   - full: Premium models (Claude Opus 4, GPT-4.1, o3, Gemini 2.5 Pro, DeepSeek R1, Grok 3)
 
-Requires API keys: ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, etc.`,
+Requires API keys: ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, etc.
+
+Commands:
+  ask       Query the AI Council with a prompt
+  review    Get a code review from the AI Council
+  debug     Debug an error with help from the AI Council
+  research  Deep research with the AI Council debate mode
+  models    Display available models for a tier
+  costs     Display cost summary and breakdowns
+
+Use "ai-council [command] --help" for more information about a command.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// For now, just display tier info.
-		tierCfg := config.GetTier(tier)
-		fmt.Printf("AI Council — Tier: %s\n\n", tierCfg.Name)
-
-		fmt.Println("Proposers:")
-		for _, model := range tierCfg.Proposers {
-			available := "✓"
-			if !config.Available(model.Model) {
-				available = "✗"
-			}
-			reasoning := ""
-			if model.IsReasoning {
-				reasoning = " (reasoning)"
-			}
-			fmt.Printf("  %s %s%s\n", available, model.Name, reasoning)
-		}
-
-		fmt.Printf("\nAggregator: %s\n", tierCfg.Aggregator.Name)
-
-		// Validate keys.
-		if err := config.ValidateKeys(tier); err != nil {
-			fmt.Fprintf(os.Stderr, "\n%v\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Println("\nAll required API keys are set. Ready to run!")
+		cmd.Help()
 	},
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&tier, "tier", "t", config.DefaultTier(),
-		fmt.Sprintf("Tier to use (%s)", config.ValidTiers()))
+	// Register all subcommands
+	cmd.RegisterCommands(rootCmd)
 }
 
 func main() {
