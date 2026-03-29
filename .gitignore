@@ -1,7 +1,18 @@
-__pycache__/
-*.egg-info/
-dist/
-build/
-*.pyc
+# Go build artifacts
+council-personal
+*.exe
+*.test
+*.out
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
 .env
-.venv/

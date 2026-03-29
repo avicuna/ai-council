@@ -1,22 +1,22 @@
 # AI Council — Multi-LLM Orchestrator (Personal Edition)
 
-Query up to 6 AI models in parallel and synthesize their best answer. Three orchestration modes, three cost tiers, per-query cost tracking. Built on [LiteLLM](https://github.com/BerriAI/litellm) for universal provider support.
+Query up to 6 AI models in parallel and synthesize their best answer. Three orchestration modes, three cost tiers, per-query cost tracking. Single Go binary — no runtime dependencies.
 
-## Tiers
+## Install
 
-| Tier | Models | Aggregator | Use Case |
-|------|--------|------------|----------|
-| **fast** | Haiku 4.5, GPT-4o-mini, Gemini Flash | Haiku 4.5 | Quick questions, ~10x cheaper |
-| **balanced** | Sonnet 4, GPT-4.1, Gemini 2.5 Pro | Sonnet 4 | Good quality, moderate cost |
-| **full** | Opus 4.6, GPT-4.1, o3, Gemini Pro, DeepSeek R1, Grok 3 | Opus 4.6 | Maximum quality, 6 models |
+```bash
+# Build from source
+git clone https://github.com/avicuna/ai-council.git
+cd ai-council
+go build -o council-personal .
 
-Only models with API keys configured are used. Works with 2+ models.
+# Move to PATH
+mv council-personal ~/go/bin/  # or /usr/local/bin/
+```
 
 ## Setup
 
 ```bash
-pip install -e .
-
 # Set API keys (at least 2 required)
 export ANTHROPIC_API_KEY="sk-ant-..."
 export OPENAI_API_KEY="sk-..."
@@ -25,53 +25,49 @@ export DEEPSEEK_API_KEY="..."      # Optional
 export XAI_API_KEY="..."           # Optional
 ```
 
+## Tiers
+
+| Tier | Models | Aggregator | Use Case |
+|------|--------|------------|----------|
+| **fast** | Haiku 4.5, GPT-4o-mini, Gemini Flash | Haiku 4.5 | Quick questions, ~10x cheaper |
+| **balanced** | Sonnet 4, GPT-4.1, Gemini 2.5 Pro | Sonnet 4 | Good quality, moderate cost |
+| **full** | Opus 4, GPT-4.1, o3, Gemini 2.5 Pro, DeepSeek R1, Grok 3 | Opus 4 | Maximum quality, 6 models |
+
+Only models with API keys configured are used. Works with 2+ models.
+
 ## CLI Usage
 
 ```bash
 # MoA mode (default) — fast parallel synthesis
-council ask "What causes inflation?" --verbose
+council-personal ask "What causes inflation?" --verbose
 
 # Use a cheaper tier for simple questions
-council ask "What is HTTP?" --tier fast -v
+council-personal ask "What is HTTP?" --tier fast -v
 
-# Balanced tier for everyday use
-council ask "React vs Vue?" --tier balanced --mode debate -v
+# Debate mode for nuanced topics
+council-personal ask "React vs Vue?" --tier balanced --mode debate -v
 
-# Full tier (default) for important questions
-council ask "Design a caching strategy" --mode redteam -v
+# Red team mode for high-stakes decisions
+council-personal ask "Design a caching strategy" --mode redteam -v
 
 # Preset commands (all support --tier)
-council review src/main.py --tier balanced
-council debug "TypeError: ..."
-council research "WebSockets vs SSE" --tier full
+council-personal review main.go --tier balanced
+council-personal debug "TypeError: ..."
+council-personal research "WebSockets vs SSE" --tier full
 
 # Pipe stdin
-cat error.log | council debug
-cat main.py | council ask "review this" -f src/utils.py
+cat error.log | council-personal debug
+cat main.go | council-personal ask "review this" -f utils.go
 
 # Budget tracking
-council costs                       # Spending summary
-council models                      # Model status (default: full)
-council models -t fast              # Show fast tier models
+council-personal costs
+council-personal models
+council-personal models -t fast
 ```
 
 ## Cost Tracking
 
-Every query logs its cost to `~/.ai-council/costs.jsonl`. View your spending:
-
-```bash
-council costs
-# Spending Summary
-#   Today:      $0.1234  (5 queries)
-#   This week:  $0.8901
-#   This month: $2.3456
-#   All time:   $12.3456  (142 queries)
-#
-# By Tier
-#   fast: $1.2345
-#   balanced: $3.4567
-#   full: $7.5544
-```
+Every query logs its cost to `~/.ai-council/costs.jsonl`. View spending with `council-personal costs`.
 
 Cost is also shown in every query's footer:
 ```
@@ -86,14 +82,14 @@ Add to your `.mcp.json`:
 {
   "mcpServers": {
     "ai-council": {
-      "command": "council-mcp",
-      "args": []
+      "command": "council-personal",
+      "args": ["mcp"]
     }
   }
 }
 ```
 
-Tools: `council_ask`, `council_review`, `council_debug`, `council_research`, `council_costs`, `council_models`
+Tools: `council_ask`, `council_review`, `council_debug`, `council_research`, `council_costs`, `council_models`, `council_usage`, `council_status`, `council`
 
 All MCP tools support a `tier` parameter (`"fast"`, `"balanced"`, `"full"`).
 
@@ -122,18 +118,23 @@ export COUNCIL_AGGREGATOR_MODEL="claude-opus-4-20250918"
 ## Architecture
 
 ```
-src/ai_council/
-├── cli.py              CLI (ask, review, debug, research, models, costs)
-├── config.py           Tiered model config, env var overrides
-├── providers.py        LiteLLM async calls, cost tracking, reasoning model handling
-├── prompts.py          MoA + Debate + Red Team + Scoring prompts
-├── scoring.py          Agreement scoring (0-100%)
-├── cost_tracker.py     Persistent cost logging (~/.ai-council/costs.jsonl)
-├── mcp_server.py       MCP server for Claude Code
-└── strategies/
-    ├── moa.py          Mixture of Agents + scoring + cost
-    ├── debate.py       Multi-round debate + scoring + cost
-    └── redteam.py      Adversarial critique/defense/judge + cost
-```
+cmd/                        CLI commands (Cobra)
+├── ask.go                  council-personal ask
+├── review.go               council-personal review
+├── debug.go                council-personal debug
+├── research.go             council-personal research
+├── models.go               council-personal models
+├── costs.go                council-personal costs
+├── mcp.go                  council-personal mcp (stdio MCP server)
+├── common.go               Shared pipeline logic
+└── root.go                 Command registration
 
-All provider calls go through LiteLLM — supports 100+ models. Just set the API key and model ID.
+internal/
+├── config/                 Tiered model config, env var overrides, API key validation
+├── provider/               Native SDK calls (Anthropic, OpenAI, Google), parallel execution
+├── strategy/               MoA, Debate, Red Team orchestration
+├── prompt/                 System prompts and templates
+├── scoring/                Agreement scoring (0-100%)
+├── cost/                   Persistent cost logging (~/.ai-council/costs.jsonl)
+└── output/                 Terminal formatting (lipgloss, pterm)
+```

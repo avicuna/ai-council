@@ -1,0 +1,18 @@
+{
+  "claude-opus-4-20250918": {"input_per_mtok": 15.0, "output_per_mtok": 75.0},
+  "claude-sonnet-4-20250514": {"input_per_mtok": 3.0, "output_per_mtok": 15.0},
+  "claude-haiku-4-5-20251001": {"input_per_mtok": 0.80, "output_per_mtok": 4.0},
+  "gpt-4.1": {"input_per_mtok": 2.0, "output_per_mtok": 8.0},
+  "gpt-4o-mini": {"input_per_mtok": 0.15, "output_per_mtok": 0.60},
+  "o3": {"input_per_mtok": 2.0, "output_per_mtok": 8.0},
+  "o4-mini": {"input_per_mtok": 1.10, "output_per_mtok": 4.40},
+  "gemini/gemini-2.5-pro": {"input_per_mtok": 1.25, "output_per_mtok": 10.0},
+  "gemini-2.5-pro": {"input_per_mtok": 1.25, "output_per_mtok": 10.0},
+  "gemini-2.5-pro-preview-05-06": {"input_per_mtok": 1.25, "output_per_mtok": 10.0},
+  "gemini/gemini-2.0-flash": {"input_per_mtok": 0.10, "output_per_mtok": 0.40},
+  "gemini-2.0-flash": {"input_per_mtok": 0.10, "output_per_mtok": 0.40},
+  "deepseek/deepseek-reasoner": {"input_per_mtok": 0.55, "output_per_mtok": 2.19},
+  "deepseek-reasoner": {"input_per_mtok": 0.55, "output_per_mtok": 2.19},
+  "xai/grok-3": {"input_per_mtok": 3.0, "output_per_mtok": 15.0},
+  "grok-3": {"input_per_mtok": 3.0, "output_per_mtok": 15.0}
+}

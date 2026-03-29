@@ -1,0 +1,27 @@
+{
+  "name": "ai-council",
+  "version": "1.0.0",
+  "description": "Multi-LLM orchestrator — query 6 AI models in parallel and synthesize the best answer. MoA, Debate, and Red Team strategies.",
+  "author": {
+    "name": "avicuna",
+    "url": "https://github.com/avicuna"
+  },
+  "homepage": "https://github.com/avicuna/ai-council",
+  "repository": "https://github.com/avicuna/ai-council",
+  "license": "MIT",
+  "keywords": ["ai", "llm", "council", "mcp", "multi-model", "orchestrator"],
+  "setup": "bash scripts/install.sh",
+  "mcpServers": {
+    "ai-council": {
+      "command": "council-personal",
+      "args": ["mcp"],
+      "env": {
+        "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}",
+        "OPENAI_API_KEY": "${OPENAI_API_KEY}",
+        "GEMINI_API_KEY": "${GEMINI_API_KEY}",
+        "DEEPSEEK_API_KEY": "${DEEPSEEK_API_KEY}",
+        "XAI_API_KEY": "${XAI_API_KEY}"
+      }
+    }
+  }
+}
