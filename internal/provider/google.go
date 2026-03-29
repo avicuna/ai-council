@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -92,6 +91,11 @@ func (p *GeminiProvider) queryOnce(ctx context.Context, req *Request) (*Response
 
 	// Build generation config
 	config := &genai.GenerateContentConfig{}
+	if req.SystemPrompt != "" {
+		config.SystemInstruction = &genai.Content{
+			Parts: []*genai.Part{{Text: req.SystemPrompt}},
+		}
+	}
 	if req.Temperature != nil {
 		temp32 := float32(*req.Temperature)
 		config.Temperature = &temp32
@@ -139,19 +143,10 @@ func (p *GeminiProvider) queryOnce(ctx context.Context, req *Request) (*Response
 	}, nil
 }
 
-// buildContents constructs the content array for the API request.
-// Gemini doesn't have a strict system/user separation like OpenAI,
-// so we combine them into a single user message.
+// buildContents constructs the user message content.
+// System prompt is handled separately via GenerateContentConfig.SystemInstruction.
 func (p *GeminiProvider) buildContents(req *Request) []*genai.Content {
-	var textContent strings.Builder
-
-	if req.SystemPrompt != "" {
-		textContent.WriteString(req.SystemPrompt)
-		textContent.WriteString("\n\n")
-	}
-	textContent.WriteString(req.UserPrompt)
-
-	return genai.Text(textContent.String())
+	return genai.Text(req.UserPrompt)
 }
 
 // isRetryable checks if an error is retryable (429 or 5xx status codes).
@@ -209,37 +204,4 @@ func (p *GeminiProvider) calculateBackoff(attempt int) time.Duration {
 	}
 
 	return delay
-}
-
-
-// HTTPError is a helper to extract HTTP status code from errors (if available).
-type HTTPError interface {
-	HTTPStatusCode() int
-}
-
-// extractHTTPStatus attempts to extract HTTP status code from an error.
-func extractHTTPStatus(err error) int {
-	if httpErr, ok := err.(HTTPError); ok {
-		return httpErr.HTTPStatusCode()
-	}
-
-	// Try to find status code in error string as fallback
-	errStr := err.Error()
-	if strings.Contains(errStr, "429") {
-		return http.StatusTooManyRequests
-	}
-	if strings.Contains(errStr, "500") {
-		return http.StatusInternalServerError
-	}
-	if strings.Contains(errStr, "502") {
-		return http.StatusBadGateway
-	}
-	if strings.Contains(errStr, "503") {
-		return http.StatusServiceUnavailable
-	}
-	if strings.Contains(errStr, "504") {
-		return http.StatusGatewayTimeout
-	}
-
-	return 0
 }

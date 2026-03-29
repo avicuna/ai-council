@@ -20,7 +20,7 @@ type AgreementScore struct {
 
 // ScoreAgreement calculates an agreement score for the given proposals.
 // Returns nil if there are fewer than 2 proposals (no comparison possible).
-// Uses the provided scorer Provider with a 5-second timeout.
+// Uses the provided scorer Provider with a 15-second timeout.
 func ScoreAgreement(ctx context.Context, scorer provider.Provider, proposals []provider.Response, userPrompt string) (*AgreementScore, error) {
 	if len(proposals) < 2 {
 		return nil, nil
@@ -34,7 +34,7 @@ func ScoreAgreement(ctx context.Context, scorer provider.Provider, proposals []p
 	scoringPrompt = strings.ReplaceAll(scoringPrompt, "{proposals}", proposalsText)
 
 	// Query scorer with timeout
-	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	timeoutCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
 	req := &provider.Request{

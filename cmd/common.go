@@ -77,9 +77,9 @@ func runPipeline(ctx context.Context, opts *pipelineOptions) error {
 		return fmt.Errorf("strategy execution failed: %w", err)
 	}
 
-	// Step 7: Render output
+	// Step 7: Render output (to stdout for CLI, never called in MCP path)
 	renderedOutput := renderResult(result, opts)
-	fmt.Println(renderedOutput)
+	fmt.Fprintln(os.Stdout, renderedOutput)
 
 	// Step 8: Log cost
 	if err := logCost(result, opts); err != nil {

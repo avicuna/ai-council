@@ -190,10 +190,14 @@ func queryAllWithRequests(ctx context.Context, providers []provider.Provider, re
 	results := make([]result, len(providers))
 	done := make(chan int, len(providers))
 
-	// Query all in parallel
+	// Query all in parallel with per-model timeouts
 	for i := range providers {
 		go func(idx int) {
-			resp, err := providers[idx].Query(ctx, requests[idx])
+			// Apply timeout matching QueryAll behavior
+			queryCtx, cancel := context.WithTimeout(ctx, 90*time.Second)
+			defer cancel()
+
+			resp, err := providers[idx].Query(queryCtx, requests[idx])
 			results[idx] = result{resp: resp, err: err}
 
 			// Send progress event

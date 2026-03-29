@@ -394,12 +394,14 @@ func TestProgressTracker(t *testing.T) {
 }
 
 func TestEstimateCost(t *testing.T) {
-	resp := testResponse("Model", "model", "Content", 1000, 1000, 2000)
-	cost := estimateCost(resp)
+	// Use a real model ID so pricing lookup works
+	resp := testResponse("GPT-4.1", "gpt-4.1", "Content", 1000, 1000, 2000)
+	c := estimateCost(resp)
 
-	// Should be roughly (1000 * 3 + 2000 * 15) / 1M = 0.033
-	if cost < 0.03 || cost > 0.04 {
-		t.Errorf("estimateCost() = %.4f, want ~0.033", cost)
+	// gpt-4.1: input $2/MTok, output $8/MTok
+	// Expected: (1000 * 2 + 2000 * 8) / 1M = 0.018
+	if c < 0.01 || c > 0.03 {
+		t.Errorf("estimateCost() = %.4f, want ~0.018", c)
 	}
 }
 

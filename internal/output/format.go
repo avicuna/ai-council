@@ -372,13 +372,20 @@ func formatCost(resp *provider.Response) string {
 	return formatCostValue(estimateCost(resp))
 }
 
-// estimateCost provides a rough cost estimate based on token counts.
-// This is a placeholder until the proper cost tracking is implemented.
+// costTracker is a package-level tracker for cost estimation in output rendering.
+var costTracker *cost.Tracker
+
+func init() {
+	// Best-effort initialization — if it fails, costs show as $0
+	costTracker, _ = cost.NewTracker("")
+}
+
+// estimateCost uses the embedded pricing table to estimate response cost.
 func estimateCost(resp *provider.Response) float64 {
-	// Rough estimates ($/1M tokens): input $3, output $15
-	inputCost := float64(resp.InputTokens) * 3.0 / 1_000_000
-	outputCost := float64(resp.OutputTokens) * 15.0 / 1_000_000
-	return inputCost + outputCost
+	if costTracker == nil {
+		return 0
+	}
+	return costTracker.EstimateCost(resp.Model, resp.InputTokens, resp.OutputTokens)
 }
 
 // colorizeAgreementScore applies color to an agreement score percentage.

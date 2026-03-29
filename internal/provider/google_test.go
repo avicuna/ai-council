@@ -86,7 +86,7 @@ func TestGeminiProvider_buildContents(t *testing.T) {
 				SystemPrompt: "You are a helpful assistant.",
 				UserPrompt:   "Explain AI.",
 			},
-			wantContent: "You are a helpful assistant.\n\nExplain AI.",
+			wantContent: "Explain AI.", // system prompt now goes via SystemInstruction, not content
 		},
 		{
 			name: "only user prompt",
@@ -102,7 +102,7 @@ func TestGeminiProvider_buildContents(t *testing.T) {
 				SystemPrompt: "You are a helpful assistant.",
 				UserPrompt:   "",
 			},
-			wantContent: "You are a helpful assistant.\n\n",
+			wantContent: "",
 		},
 	}
 
@@ -301,54 +301,6 @@ func TestGeminiProvider_Available(t *testing.T) {
 	}
 }
 
-
-func TestExtractHTTPStatus(t *testing.T) {
-	tests := []struct {
-		name       string
-		err        error
-		wantStatus int
-	}{
-		{
-			name:       "429 in error string",
-			err:        errors.New("HTTP 429: rate limit"),
-			wantStatus: 429,
-		},
-		{
-			name:       "500 in error string",
-			err:        errors.New("HTTP 500: internal error"),
-			wantStatus: 500,
-		},
-		{
-			name:       "502 in error string",
-			err:        errors.New("HTTP 502: bad gateway"),
-			wantStatus: 502,
-		},
-		{
-			name:       "503 in error string",
-			err:        errors.New("HTTP 503: service unavailable"),
-			wantStatus: 503,
-		},
-		{
-			name:       "504 in error string",
-			err:        errors.New("HTTP 504: gateway timeout"),
-			wantStatus: 504,
-		},
-		{
-			name:       "no status code",
-			err:        errors.New("generic error"),
-			wantStatus: 0,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			status := extractHTTPStatus(tt.err)
-			if status != tt.wantStatus {
-				t.Errorf("extractHTTPStatus() = %d, want %d", status, tt.wantStatus)
-			}
-		})
-	}
-}
 
 func TestGeminiProvider_QueryOnce_RequestStructure(t *testing.T) {
 	// This test verifies the request building logic without making real API calls

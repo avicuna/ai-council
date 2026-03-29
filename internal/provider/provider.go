@@ -89,17 +89,21 @@ func QueryAll(ctx context.Context, providers []Provider, req *Request, progressC
 			mu.Lock()
 			if err != nil {
 				result.Errors[name] = err
-				if progressCh != nil {
+			} else {
+				result.Responses = append(result.Responses, *resp)
+			}
+			mu.Unlock()
+
+			// Send progress events outside the mutex to avoid deadlock
+			if progressCh != nil {
+				if err != nil {
 					progressCh <- ProgressEvent{
 						Model:   name,
 						Status:  "failed",
 						Latency: latency,
 						Error:   err,
 					}
-				}
-			} else {
-				result.Responses = append(result.Responses, *resp)
-				if progressCh != nil {
+				} else {
 					progressCh <- ProgressEvent{
 						Model:   name,
 						Status:  "done",
@@ -107,7 +111,6 @@ func QueryAll(ctx context.Context, providers []Provider, req *Request, progressC
 					}
 				}
 			}
-			mu.Unlock()
 		}(provider)
 	}
 
@@ -142,13 +145,54 @@ func determineTimeout(modelName string) time.Duration {
 
 // NewProvider creates a provider based on the model configuration.
 func NewProvider(modelCfg config.ModelConfig) (Provider, error) {
-	modelLower := strings.ToLower(modelCfg.Model)
+	model := modelCfg.Model
+	modelLower := strings.ToLower(model)
 
-	// Determine provider type
-	if strings.Contains(modelLower, "claude") || strings.Contains(modelLower, "anthropic") {
+	// Anthropic (Claude models)
+	if strings.Contains(modelLower, "claude") ||
+		strings.Contains(modelLower, "haiku") ||
+		strings.Contains(modelLower, "sonnet") ||
+		strings.Contains(modelLower, "opus") {
 		return NewAnthropicProvider(modelCfg)
 	}
 
-	// Other providers will be added in future tasks
-	return nil, fmt.Errorf("unsupported model: %s", modelCfg.Model)
+	// Google Gemini
+	if strings.Contains(modelLower, "gemini") {
+		// Strip "gemini/" prefix for the SDK — it expects just the model name
+		sdkModel := model
+		if strings.HasPrefix(model, "gemini/") {
+			sdkModel = model[len("gemini/"):]
+		}
+		return NewGeminiProvider("", sdkModel)
+	}
+
+	// DeepSeek (OpenAI-compatible with custom base URL)
+	if strings.Contains(modelLower, "deepseek") {
+		sdkModel := model
+		if strings.HasPrefix(model, "deepseek/") {
+			sdkModel = model[len("deepseek/"):]
+		}
+		return NewDeepSeekProvider("", sdkModel)
+	}
+
+	// X.AI Grok (OpenAI-compatible with custom base URL)
+	if strings.Contains(modelLower, "grok") || strings.Contains(modelLower, "xai") {
+		sdkModel := model
+		if strings.HasPrefix(model, "xai/") {
+			sdkModel = model[len("xai/"):]
+		}
+		return NewGrokProvider("", sdkModel)
+	}
+
+	// OpenAI reasoning models (o3, o4)
+	if strings.HasPrefix(modelLower, "o3") || strings.HasPrefix(modelLower, "o4") {
+		return NewO3Provider("", model)
+	}
+
+	// OpenAI standard models (gpt-*)
+	if strings.Contains(modelLower, "gpt") || strings.HasPrefix(modelLower, "ft:") {
+		return NewGPTProvider("", model)
+	}
+
+	return nil, fmt.Errorf("unsupported model: %s (no matching provider)", model)
 }

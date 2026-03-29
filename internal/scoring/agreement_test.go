@@ -275,15 +275,19 @@ func TestScoreAgreementTimeout(t *testing.T) {
 		{Name: "gpt", Content: "Answer B"},
 	}
 
-	// Create a scorer that takes longer than the 5s timeout
+	// Create a scorer that takes longer than the 15s timeout
 	scorer := &mockProvider{
 		name:     "slow-scorer",
-		delay:    6 * time.Second,
+		delay:    16 * time.Second,
 		response: `{"score": 50, "reason": "Should timeout"}`,
 	}
 
+	// Use a shorter parent context to avoid waiting 15s in tests
+	shortCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
 	start := time.Now()
-	result, err := ScoreAgreement(ctx, scorer, proposals, "test prompt")
+	result, err := ScoreAgreement(shortCtx, scorer, proposals, "test prompt")
 	elapsed := time.Since(start)
 
 	if err == nil {
@@ -294,9 +298,9 @@ func TestScoreAgreementTimeout(t *testing.T) {
 		t.Errorf("ScoreAgreement() expected nil result on timeout, got %+v", result)
 	}
 
-	// Verify it timed out around 5s, not 6s
-	if elapsed > 5500*time.Millisecond {
-		t.Errorf("ScoreAgreement() took %v, expected ~5s timeout", elapsed)
+	// Verify it timed out around 2s (parent context), not 16s
+	if elapsed > 3*time.Second {
+		t.Errorf("ScoreAgreement() took %v, expected ~2s timeout", elapsed)
 	}
 }
 
