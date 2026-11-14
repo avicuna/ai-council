@@ -15,6 +15,8 @@ func TestGetRequiredKey(t *testing.T) {
 		{"claude-opus-4-20250918", "ANTHROPIC_API_KEY"},
 		{"claude-sonnet-4-20250514", "ANTHROPIC_API_KEY"},
 		{"anthropic/claude-3", "ANTHROPIC_API_KEY"},
+		{"claude-opus-5-5", "ANTHROPIC_API_KEY"},
+		{"claude-haiku-5-5", "ANTHROPIC_API_KEY"},
 		// OpenAI
 		{"gpt-4.1", "OPENAI_API_KEY"},
 		{"gpt-4o-mini", "OPENAI_API_KEY"},
@@ -23,9 +25,13 @@ func TestGetRequiredKey(t *testing.T) {
 		{"o4-mini", "OPENAI_API_KEY"},
 		{"openai/gpt-4", "OPENAI_API_KEY"},
 		{"ft:gpt-3.5-turbo", "OPENAI_API_KEY"},
+		{"gpt-6.1-sol", "OPENAI_API_KEY"},
+		{"gpt-6.1-terra", "OPENAI_API_KEY"},
+		{"gpt-6-luna", "OPENAI_API_KEY"},
 		// Google
 		{"gemini/gemini-2.5-pro", "GEMINI_API_KEY"},
 		{"gemini/gemini-2.0-flash", "GEMINI_API_KEY"},
+		{"gemini/gemini-3.8-flash", "GEMINI_API_KEY"},
 		// DeepSeek
 		{"deepseek/deepseek-reasoner", "DEEPSEEK_API_KEY"},
 		{"deepseek/deepseek-chat", "DEEPSEEK_API_KEY"},
@@ -204,8 +210,8 @@ func TestValidateKeysErrorMessage(t *testing.T) {
 	if !strings.Contains(errMsg, "OPENAI_API_KEY") {
 		t.Errorf("Expected error message to list OPENAI_API_KEY, got: %s", errMsg)
 	}
-	if !strings.Contains(errMsg, "GEMINI_API_KEY") {
-		t.Errorf("Expected error message to list GEMINI_API_KEY, got: %s", errMsg)
+	if strings.Contains(errMsg, "GEMINI_API_KEY") {
+		t.Errorf("Balanced tier has no Gemini model, but error lists GEMINI_API_KEY: %s", errMsg)
 	}
 
 	// Check that error message contains helpful instructions.

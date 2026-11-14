@@ -17,11 +17,11 @@ var rootCmd = &cobra.Command{
 	Long: `AI Council queries multiple flagship AI models in parallel and synthesizes their best answer.
 
 Supports three tiers:
-  - fast: Budget models (Haiku, GPT-4o-mini, Gemini Flash)
-  - balanced: Mid-tier models (Sonnet, GPT-4.1, Gemini 2.5 Pro)
-  - full: Premium models (Claude Opus 4, GPT-4.1, o3, Gemini 2.5 Pro, DeepSeek R1, Grok 3)
+  - fast: Budget models (Claude Haiku 5.5, GPT-6 Luna)
+  - balanced: Mid-tier models (Claude Sonnet 5.5, GPT-6.1 Terra)
+  - full: Premium models (Claude Opus 5.5, GPT-6.1 Sol)
 
-Requires API keys: ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, etc.
+Requires API keys: ANTHROPIC_API_KEY, OPENAI_API_KEY (GEMINI_API_KEY with COUNCIL_GEMINI_MODEL)
 
 Commands:
   ask       Query the AI Council with a prompt

@@ -31,10 +31,10 @@ func TestGetTier(t *testing.T) {
 		wantProposers int
 		wantAgg       string
 	}{
-		{"fast tier", "fast", 3, "claude-haiku-4-5-20251001"},
-		{"balanced tier", "balanced", 3, "claude-sonnet-4-20250514"},
-		{"full tier", "full", 6, "claude-opus-4-20250918"},
-		{"invalid tier fallback", "invalid", 6, "claude-opus-4-20250918"}, // Falls back to full
+		{"fast tier", "fast", 2, "claude-haiku-5-5"},
+		{"balanced tier", "balanced", 2, "claude-sonnet-5-5"},
+		{"full tier", "full", 2, "claude-opus-5-5"},
+		{"invalid tier fallback", "invalid", 2, "claude-opus-5-5"}, // Falls back to full
 	}
 
 	for _, tt := range tests {
@@ -91,13 +91,11 @@ func TestFriendlyName(t *testing.T) {
 		model string
 		want  string
 	}{
-		{"claude-opus-4-20250918", "Claude Opus 4.6"},
-		{"claude-sonnet-4-20250514", "Claude Sonnet 4"},
-		{"gpt-4.1", "GPT-4.1"},
-		{"o3", "o3"},
-		{"gemini/gemini-2.5-pro", "Gemini 2.5 Pro"},
-		{"deepseek/deepseek-reasoner", "DeepSeek R1"},
-		{"xai/grok-3", "Grok 3"},
+		{"claude-opus-5-5", "Claude Opus 5.5"},
+		{"claude-haiku-5-5", "Claude Haiku 5.5"},
+		{"gpt-6.1-sol", "GPT-6.1 Sol"},
+		{"gpt-6-luna", "GPT-6 Luna"},
+		{"gemini/gemini-3.8-flash", "Gemini 3.8 Flash"},
 		{"unknown-model", "Unknown Model"}, // Fallback
 		{"provider/unknown-model", "Unknown Model"}, // Fallback with prefix
 	}
@@ -117,13 +115,11 @@ func TestReasoningModels(t *testing.T) {
 		model string
 		want  bool
 	}{
-		{"o3", true},
-		{"o3-mini", true},
-		{"o4-mini", true},
-		{"deepseek/deepseek-reasoner", true},
-		{"gpt-4.1", false},
-		{"claude-opus-4-20250918", false},
-		{"gemini/gemini-2.5-pro", false},
+		{"gpt-6.1-sol", true},
+		{"gpt-6.1-terra", true},
+		{"gpt-6-luna", true},
+		{"claude-opus-5-5", false},
+		{"gemini/gemini-3.8-flash", false},
 	}
 
 	for _, tt := range tests {
@@ -152,5 +148,31 @@ func TestGetProposers(t *testing.T) {
 	available := GetProposers("full")
 	if len(available) > len(all) {
 		t.Errorf("Available proposers (%d) cannot exceed total proposers (%d)", len(available), len(all))
+	}
+}
+
+func TestTierModelsAreKnown(t *testing.T) {
+	// Every default model must route to a provider key and have a display name,
+	// so a mistyped ID fails here instead of on a billed call.
+	for _, tier := range ValidTiers() {
+		cfg := GetTier(tier)
+		for _, m := range append(cfg.Proposers, cfg.Aggregator) {
+			if GetRequiredKey(m.Model) == "" {
+				t.Errorf("%s tier: model %q routes to no provider key", tier, m.Model)
+			}
+			if _, ok := friendlyNames[m.Model]; !ok {
+				t.Errorf("%s tier: model %q has no friendly name", tier, m.Model)
+			}
+		}
+	}
+}
+
+func TestModelConfigsSkipsEmpty(t *testing.T) {
+	got := modelConfigs("claude-opus-5-5", "", "gemini/gemini-3.8-flash")
+	if len(got) != 2 {
+		t.Fatalf("Expected 2 configs, got %d", len(got))
+	}
+	if got[1].Model != "gemini/gemini-3.8-flash" || got[1].Name != "Gemini 3.8 Flash" {
+		t.Errorf("Unexpected second config: %+v", got[1])
 	}
 }

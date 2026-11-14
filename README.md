@@ -1,6 +1,6 @@
 # AI Council — Multi-LLM Orchestrator (Personal Edition)
 
-Query up to 6 AI models in parallel and synthesize their best answer. Three orchestration modes, three cost tiers, per-query cost tracking. Single Go binary — no runtime dependencies.
+Query several AI models in parallel and synthesize their best answer. Three orchestration modes, three cost tiers, per-query cost tracking. Single Go binary — no runtime dependencies.
 
 ## Install
 
@@ -20,18 +20,18 @@ mv council-personal ~/go/bin/  # or /usr/local/bin/
 # Set API keys (at least 2 required)
 export ANTHROPIC_API_KEY="sk-ant-..."
 export OPENAI_API_KEY="sk-..."
-export GEMINI_API_KEY="..."
-export DEEPSEEK_API_KEY="..."      # Optional
-export XAI_API_KEY="..."           # Optional
+export GEMINI_API_KEY="..."        # Optional, used with COUNCIL_GEMINI_MODEL
 ```
 
 ## Tiers
 
 | Tier | Models | Aggregator | Use Case |
 |------|--------|------------|----------|
-| **fast** | Haiku 4.5, GPT-4o-mini, Gemini Flash | Haiku 4.5 | Quick questions, ~10x cheaper |
-| **balanced** | Sonnet 4, GPT-4.1, Gemini 2.5 Pro | Sonnet 4 | Good quality, moderate cost |
-| **full** | Opus 4, GPT-4.1, o3, Gemini 2.5 Pro, DeepSeek R1, Grok 3 | Opus 4 | Maximum quality, 6 models |
+| **fast** | Haiku 5.5, GPT-6 Luna | Haiku 5.5 | Quick questions, cheapest |
+| **balanced** | Sonnet 5.5, GPT-6.1 Terra | Sonnet 5.5 | Good quality, moderate cost |
+| **full** | Opus 5.5, GPT-6.1 Sol | Opus 5.5 | Maximum quality |
+
+Set `COUNCIL_GEMINI_MODEL` (for example `gemini/gemini-3.8-flash`) to add Gemini to the full tier.
 
 Only models with API keys configured are used. Works with 2+ models.
 
@@ -106,13 +106,11 @@ All MCP tools support a `tier` parameter (`"fast"`, `"balanced"`, `"full"`).
 ## Override Models
 
 ```bash
-export COUNCIL_CLAUDE_MODEL="claude-sonnet-4-20250514"
-export COUNCIL_GPT_MODEL="gpt-4o"
-export COUNCIL_O3_MODEL="o3-mini"
-export COUNCIL_GEMINI_MODEL="gemini/gemini-2.0-flash"
-export COUNCIL_DEEPSEEK_MODEL="deepseek/deepseek-chat"
-export COUNCIL_GROK_MODEL="xai/grok-3"
-export COUNCIL_AGGREGATOR_MODEL="claude-opus-4-20250918"
+# These apply to the full tier.
+export COUNCIL_CLAUDE_MODEL="claude-sonnet-5-5"
+export COUNCIL_GPT_MODEL="gpt-6.1-terra"
+export COUNCIL_GEMINI_MODEL="gemini/gemini-3.8-flash"   # off unless set
+export COUNCIL_AGGREGATOR_MODEL="claude-opus-5-5"
 ```
 
 ## Architecture

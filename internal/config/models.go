@@ -22,39 +22,29 @@ type TierConfig struct {
 
 // Reasoning models — these use built-in reasoning, no temperature, system→user prefix.
 var reasoningModels = map[string]bool{
-	"o3":                         true,
-	"o3-mini":                    true,
-	"o4-mini":                    true,
-	"deepseek/deepseek-reasoner": true,
+	"gpt-6.1-sol":   true,
+	"gpt-6.1-terra": true,
+	"gpt-6-luna":    true,
 }
 
 // Friendly names mapping — converts model IDs to human-readable names.
 var friendlyNames = map[string]string{
-	"claude-opus-4-20250918":     "Claude Opus 4.6",
-	"claude-sonnet-4-20250514":   "Claude Sonnet 4",
-	"claude-haiku-4-5-20251001":  "Claude Haiku 4.5",
-	"gpt-4.1":                    "GPT-4.1",
-	"gpt-4.1-mini":               "GPT-4.1 Mini",
-	"gpt-4o":                     "GPT-4o",
-	"gpt-4o-mini":                "GPT-4o-mini",
-	"o3":                         "o3",
-	"o3-mini":                    "o3-mini",
-	"o4-mini":                    "o4-mini",
-	"gemini/gemini-2.5-pro":      "Gemini 2.5 Pro",
-	"gemini/gemini-2.0-flash":    "Gemini Flash",
-	"deepseek/deepseek-reasoner": "DeepSeek R1",
-	"deepseek/deepseek-chat":     "DeepSeek V3",
-	"xai/grok-3":                 "Grok 3",
+	"claude-opus-5-5":              "Claude Opus 5.5",
+	"claude-sonnet-5-5":            "Claude Sonnet 5.5",
+	"claude-haiku-5-5":             "Claude Haiku 5.5",
+	"gpt-6.1-sol":                  "GPT-6.1 Sol",
+	"gpt-6.1-terra":                "GPT-6.1 Terra",
+	"gpt-6-luna":                   "GPT-6 Luna",
+	"gemini/gemini-4-argon":        "Gemini 4 Argon",
+	"gemini/gemini-3.8-flash":      "Gemini 3.8 Flash",
+	"gemini/gemini-3.5-flash-lite": "Gemini 3.5 Flash-Lite",
 }
 
 // Default model IDs (overridable via env vars).
 var (
-	claudeModel     = getEnv("COUNCIL_CLAUDE_MODEL", "claude-opus-4-20250918")
-	gptModel        = getEnv("COUNCIL_GPT_MODEL", "gpt-4.1")
-	o3Model         = getEnv("COUNCIL_O3_MODEL", "o3")
-	geminiModel     = getEnv("COUNCIL_GEMINI_MODEL", "gemini/gemini-2.5-pro")
-	deepseekModel   = getEnv("COUNCIL_DEEPSEEK_MODEL", "deepseek/deepseek-reasoner")
-	grokModel       = getEnv("COUNCIL_GROK_MODEL", "xai/grok-3")
+	claudeModel     = getEnv("COUNCIL_CLAUDE_MODEL", "claude-opus-5-5")
+	gptModel        = getEnv("COUNCIL_GPT_MODEL", "gpt-6.1-sol")
+	geminiModel     = getEnv("COUNCIL_GEMINI_MODEL", "") // off by default; set to add Gemini to the full tier
 	aggregatorModel = getEnv("COUNCIL_AGGREGATOR_MODEL", claudeModel)
 )
 
@@ -63,31 +53,22 @@ var tiers = map[string]TierConfig{
 	"fast": {
 		Name: "fast",
 		Proposers: []ModelConfig{
-			newModelConfig("claude-haiku-4-5-20251001", "Claude Haiku 4.5"),
-			newModelConfig("gpt-4o-mini", "GPT-4o-mini"),
-			newModelConfig("gemini/gemini-2.0-flash", "Gemini Flash"),
+			newModelConfigAuto("claude-haiku-5-5"),
+			newModelConfigAuto("gpt-6-luna"),
 		},
-		Aggregator: newModelConfig("claude-haiku-4-5-20251001", "Claude Haiku 4.5"),
+		Aggregator: newModelConfigAuto("claude-haiku-5-5"),
 	},
 	"balanced": {
 		Name: "balanced",
 		Proposers: []ModelConfig{
-			newModelConfig("claude-sonnet-4-20250514", "Claude Sonnet 4"),
-			newModelConfig("gpt-4.1", "GPT-4.1"),
-			newModelConfig("gemini/gemini-2.5-pro", "Gemini 2.5 Pro"),
+			newModelConfigAuto("claude-sonnet-5-5"),
+			newModelConfigAuto("gpt-6.1-terra"),
 		},
-		Aggregator: newModelConfig("claude-sonnet-4-20250514", "Claude Sonnet 4"),
+		Aggregator: newModelConfigAuto("claude-sonnet-5-5"),
 	},
 	"full": {
-		Name: "full",
-		Proposers: []ModelConfig{
-			newModelConfigAuto(claudeModel),
-			newModelConfigAuto(gptModel),
-			newModelConfigAuto(o3Model),
-			newModelConfigAuto(geminiModel),
-			newModelConfigAuto(deepseekModel),
-			newModelConfigAuto(grokModel),
-		},
+		Name:       "full",
+		Proposers:  modelConfigs(claudeModel, gptModel, geminiModel),
 		Aggregator: newModelConfigAuto(aggregatorModel),
 	},
 }
@@ -136,13 +117,15 @@ func GetAggregator(tier string) ModelConfig {
 	return GetTier(tier).Aggregator
 }
 
-// newModelConfig creates a ModelConfig with an explicit name.
-func newModelConfig(model, name string) ModelConfig {
-	return ModelConfig{
-		Model:       model,
-		Name:        name,
-		IsReasoning: reasoningModels[model],
+// modelConfigs builds configs for the given model IDs, skipping empty ones.
+func modelConfigs(models ...string) []ModelConfig {
+	configs := make([]ModelConfig, 0, len(models))
+	for _, model := range models {
+		if model != "" {
+			configs = append(configs, newModelConfigAuto(model))
+		}
 	}
+	return configs
 }
 
 // newModelConfigAuto creates a ModelConfig with auto-resolved friendly name.

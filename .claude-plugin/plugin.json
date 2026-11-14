@@ -1,7 +1,7 @@
 {
   "name": "ai-council",
   "version": "1.0.0",
-  "description": "Multi-LLM orchestrator — query 6 AI models in parallel and synthesize the best answer. MoA, Debate, and Red Team strategies.",
+  "description": "Multi-LLM orchestrator — query several AI models in parallel and synthesize the best answer. MoA, Debate, and Red Team strategies.",
   "author": {
     "name": "avicuna",
     "url": "https://github.com/avicuna"
