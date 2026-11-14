@@ -2,7 +2,10 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -344,5 +347,45 @@ func TestNewProvider(t *testing.T) {
 				t.Error("Expected provider, got nil")
 			}
 		})
+	}
+}
+
+func TestNewProvider_DefaultGPTModelsSendMaxCompletionTokens(t *testing.T) {
+	// The GPT-6 models reject max_tokens with a 400; they need max_completion_tokens.
+	var bodies []map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		bodies = append(bodies, body)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"x","object":"chat.completion","model":"m","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}`))
+	}))
+	defer srv.Close()
+	t.Setenv("OPENAI_BASE_URL", srv.URL)
+	t.Setenv("OPENAI_API_KEY", "test-key")
+
+	for _, tier := range config.ValidTiers() {
+		for _, cfg := range config.GetAllProposers(tier) {
+			if !strings.HasPrefix(cfg.Model, "gpt-") {
+				continue
+			}
+			p, err := NewProvider(cfg)
+			if err != nil {
+				t.Fatalf("NewProvider(%s): %v", cfg.Model, err)
+			}
+			bodies = nil
+			if _, err := p.Query(context.Background(), &Request{UserPrompt: "hi", MaxTokens: 100}); err != nil {
+				t.Fatalf("Query(%s): %v", cfg.Model, err)
+			}
+			if len(bodies) != 1 {
+				t.Fatalf("%s: expected 1 request, got %d", cfg.Model, len(bodies))
+			}
+			if _, ok := bodies[0]["max_tokens"]; ok {
+				t.Errorf("%s (%s tier): request sent max_tokens", cfg.Model, tier)
+			}
+			if bodies[0]["max_completion_tokens"] != float64(100) {
+				t.Errorf("%s (%s tier): max_completion_tokens = %v, want 100", cfg.Model, tier, bodies[0]["max_completion_tokens"])
+			}
+		}
 	}
 }

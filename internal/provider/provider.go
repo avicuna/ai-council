@@ -191,7 +191,7 @@ func NewProvider(modelCfg config.ModelConfig) (Provider, error) {
 
 	// OpenAI standard models (gpt-*)
 	if strings.Contains(modelLower, "gpt") || strings.HasPrefix(modelLower, "ft:") {
-		return NewGPTProvider("", model)
+		return NewGPTProvider("", model, modelCfg.IsReasoning)
 	}
 
 	return nil, fmt.Errorf("unsupported model: %s (no matching provider)", model)

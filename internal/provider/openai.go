@@ -47,11 +47,11 @@ func NewOpenAICompatProvider(name, baseURL, apiKey, model string, isReasoning bo
 }
 
 // NewGPTProvider creates a provider for OpenAI GPT models.
-func NewGPTProvider(apiKey, model string) (*OpenAICompatProvider, error) {
+func NewGPTProvider(apiKey, model string, isReasoning bool) (*OpenAICompatProvider, error) {
 	if apiKey == "" {
 		apiKey = os.Getenv("OPENAI_API_KEY")
 	}
-	return NewOpenAICompatProvider("gpt", "", apiKey, model, false)
+	return NewOpenAICompatProvider("gpt", "", apiKey, model, isReasoning)
 }
 
 // NewO3Provider creates a provider for OpenAI o3/o4 reasoning models.
