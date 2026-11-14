@@ -123,7 +123,7 @@ func TestNewGPTProvider(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			os.Setenv("OPENAI_API_KEY", tt.envKey)
-			provider, err := NewGPTProvider(tt.apiKey, tt.model)
+			provider, err := NewGPTProvider(tt.apiKey, tt.model, false)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewGPTProvider() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -321,7 +321,7 @@ func TestOpenAICompatProvider_Query_TemperatureOmission(t *testing.T) {
 }
 
 func TestOpenAICompatProvider_Available(t *testing.T) {
-	provider, err := NewGPTProvider("test-key", "gpt-4")
+	provider, err := NewGPTProvider("test-key", "gpt-4", false)
 	if err != nil {
 		t.Fatalf("NewGPTProvider() error = %v", err)
 	}
