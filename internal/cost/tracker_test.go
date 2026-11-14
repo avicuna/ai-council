@@ -560,6 +560,13 @@ func TestPricingDataCompleteness(t *testing.T) {
 		"gemini-2.0-flash":               {},
 		"deepseek/deepseek-reasoner":     {},
 		"xai/grok-3":                     {},
+		"claude-opus-5-5":                {},
+		"claude-sonnet-5-5":              {},
+		"claude-haiku-5-5":               {},
+		"gpt-6.1-sol":                    {},
+		"gpt-6.1-terra":                  {},
+		"gpt-6-luna":                     {},
+		"gemini-3.8-flash":               {},
 	}
 
 	for model := range expectedModels {
